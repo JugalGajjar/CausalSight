@@ -1,0 +1,31 @@
+# Core. Pins are lower bounds known to support Qwen2.5-VL; freeze exact versions
+# with `pip freeze > env/requirements.lock` once the remote GPU env is built.
+numpy>=1.26
+pyyaml>=6.0
+scipy>=1.11
+tqdm>=4.66
+pillow>=10.0
+
+# Model stack
+torch>=2.4
+torchvision>=0.19
+transformers>=4.51
+accelerate>=1.0
+qwen-vl-utils>=0.0.8
+datasets>=3.0
+trl>=0.17
+peft>=0.13
+sentence-transformers>=3.0
+
+# Video I/O. `av` has arm64 macOS wheels; `decord` does not.
+av>=12.0
+
+# Dev
+pytest>=8.0
+ruff>=0.6
+
+# Linux/CUDA only. Install on the remote GPU host, not on the Mac:
+#   pip install deepspeed flash-attn --no-build-isolation
+#   pip install git+https://github.com/IDEA-Research/GroundingDINO.git
+#   pip install git+https://github.com/facebookresearch/sam2.git
+# Experiment tracking (optional): wandb

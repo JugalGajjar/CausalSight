@@ -1,0 +1,32 @@
+# data and model artifacts
+data/raw/
+data/triplets/*.jsonl
+checkpoints/
+results/**/*.jsonl
+*.pt
+*.safetensors
+*.bin
+*.mp4
+*.zip
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# envs and editors
+.venv/
+.env
+.DS_Store
+.vscode/
+.idea/
+
+# experiment trackers
+wandb/
+
+# private notes, plan, and proposal drafts
+notes/

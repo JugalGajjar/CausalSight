@@ -1,0 +1,23 @@
+# Stage 0: outcome-only GRPO baseline. Commit a copy with a run id before launching.
+run_id: s0_grpo_seed0
+seed: 0
+model: Qwen/Qwen2.5-VL-3B-Instruct
+data:
+  clevrer_train: data/raw/clevrer/questions/train.json
+  general_mix: data/raw/video_r1_260k
+  max_frames: 16
+rl:
+  algorithm: grpo
+  group_size: 8
+  kl_coef: 0.04
+  lr: 1.0e-6
+  steps: 2000
+reward:
+  outcome: 1.0
+  format: 0.0
+  ground: 0.0
+  necessity: 0.0
+  process: 0.0
+eval:
+  benchmarks: [clevrer, causalvqa, mmvu, videomme, tempcompass, videoholmes]
+  faithfulness: [blind_gap, evidence_masking]

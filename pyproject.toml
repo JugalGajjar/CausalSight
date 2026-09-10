@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "causalsight"
+version = "0.0.1"
+description = "Step-level counterfactual rewards for faithful video reasoning in small VLMs"
+requires-python = ">=3.11,<3.13"
+readme = "README.md"
+dependencies = [
+  "numpy>=1.26",
+  "pyyaml>=6.0",
+  "scipy>=1.11",
+  "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+# Full ML stack; see env/requirements.txt for pins.
+ml = [
+  "torch>=2.4",
+  "transformers>=4.51",
+  "accelerate>=1.0",
+  "qwen-vl-utils>=0.0.8",
+  "av>=12.0",
+  "datasets>=3.0",
+  "trl>=0.17",
+  "peft>=0.13",
+  "sentence-transformers>=3.0",
+  "pillow>=10.0",
+]
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6",
+]
+
+[project.scripts]
+cs-eval = "causalsight.eval.harness:main"
+cs-triplets = "causalsight.data.clevrer_triplets:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
