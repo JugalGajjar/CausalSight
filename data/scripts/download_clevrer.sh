@@ -4,13 +4,19 @@
 #   annotations/       annotation_train.zip, annotation_validation.zip  (3D trajectories, collisions, properties)
 #   questions/         train.json, validation.json                      (programs, choices)
 #   derender_proposals.zip                                              (per-frame 2D object masks; source of evidence boxes)
-# Sizes: videos are the bulk (tens of GB). Pass --no-videos to skip them for annotation-only work.
+# Sizes: videos are the bulk (tens of GB).
+#   --no-videos            annotations, questions, proposals only
+#   --videos validation    add validation videos only (enough for Stage 0 evaluation)
+#   (default)              everything
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DEST="$ROOT/data/raw/clevrer"
 BASE="http://data.csail.mit.edu/clevrer"
-WANT_VIDEOS=1
-[ "${1:-}" = "--no-videos" ] && WANT_VIDEOS=0
+WANT_VIDEOS="train validation"
+case "${1:-}" in
+  --no-videos) WANT_VIDEOS="" ;;
+  --videos) WANT_VIDEOS="${2:?usage: --videos train|validation}" ;;
+esac
 mkdir -p "$DEST" && cd "$DEST"
 
 fetch() {  # fetch <relative-path>
@@ -24,10 +30,9 @@ fetch questions/validation.json
 fetch annotations/train/annotation_train.zip
 fetch annotations/validation/annotation_validation.zip
 fetch derender_proposals.zip
-if [ "$WANT_VIDEOS" = 1 ]; then
-  fetch videos/train/video_train.zip
-  fetch videos/validation/video_validation.zip
-fi
+for sp in $WANT_VIDEOS; do
+  fetch "videos/$sp/video_$sp.zip"
+done
 
 for z in $(find . -name '*.zip'); do
   d="${z%.zip}"

@@ -7,7 +7,8 @@ the released annotations directly instead of PropNet prediction files:
 * velocity        <- motion_trajectory[*].objects[*].velocity (world units/frame; xy norm)
 * in/out events   <- visibility transitions: 'in' at the first visible frame after an invisible one,
                      'out' at the first invisible frame after a visible one (official convention)
-* collisions      <- annotation['collision'] (object_ids, frame_id)
+* collisions      <- annotation['collision'] (object_ids, frame_id); dropped if neither object is in view,
+                     re-timed to the first frame both are in view if one is off-screen
 * start/end       <- pseudo-events at frames 0 and 125 (official constants)
 
 The moving threshold default 0.02 was calibrated against GT answers (instantaneous annotation velocity);
@@ -67,15 +68,28 @@ class Scene:
                 visible[i][fi] = bool(o.get("inside_camera_view", True))
                 vx, vy = o["velocity"][0], o["velocity"][1]
                 speed[i][fi] = math.hypot(vx, vy)
+        # GT convention (validated to 0 mismatches on the 17 scenes that disagreed): a collision is
+        # dropped if neither object is in view at its frame; if exactly one is off-screen, the
+        # collision is registered at the first later frame where both are in view.
+        collisions: list[Event] = []
+        for c in a.get("collision", []):
+            f = c["frame_id"]
+            ids = tuple(c["object_ids"])
+            if not (0 <= f < n) or not any(visible[i][f] for i in ids):
+                continue
+            if not all(visible[i][f] for i in ids):
+                f = next((g for g in range(f, n) if all(visible[i][g] for i in ids)), None)
+                if f is None:
+                    continue
+            collisions.append(Event("collision", f, ids))
         in_out: list[Event] = []
-        for i in ids:
+        for i in sorted(attrs):
             v = visible[i]
             for fi in range(n):
                 if fi > 0 and v[fi] and not v[fi - 1]:
                     in_out.append(Event("in", traj[fi]["frame_id"], (i,)))
                 if fi < n - 1 and v[fi] and not v[fi + 1]:
                     in_out.append(Event("out", traj[fi + 1]["frame_id"], (i,)))
-        collisions = [Event("collision", c["frame_id"], tuple(c["object_ids"])) for c in a.get("collision", [])]
         sc = cls(
             scene_index=a["scene_index"],
             video_filename=a["video_filename"],

@@ -18,6 +18,18 @@ pytest
 
 Training requires CUDA GPUs; see `notes/PLAN.md` for the compute assumptions. The local Mac is used for data construction, harness development, and tests.
 
+## Data and evaluation commands
+
+```bash
+bash data/scripts/download_clevrer.sh --no-videos          # annotations, questions, proposals
+bash data/scripts/download_clevrer.sh --videos validation  # validation videos (needed for evaluation)
+cs-clevrer-check                                           # verify on-disk format
+cs-clevrer-validate descriptive --n-videos 1000            # executor vs ground truth
+cs-triplets --split train --out data/triplets/clevrer_train.jsonl
+cs-eval --model Qwen/Qwen2.5-VL-3B-Instruct --bench clevrer --limit 200 --out results/zeroshot.jsonl
+cs-eval --model dummy --bench clevrer --limit 20           # pipeline check without weights
+```
+
 ## Layout
 
 ```
