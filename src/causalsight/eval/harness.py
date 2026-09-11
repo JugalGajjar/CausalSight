@@ -4,7 +4,8 @@
           --out results/zeroshot_qwen3b_clevrer.jsonl [--blind] [--max-frames 16]
 
 Writes one JSONL row per item (id, question_type, prompt, raw, pred, gold, correct, ...) and a
-summary JSON next to it. `--blind` replaces every frame with black (Blind Gap control).
+summary JSON next to it. `--blind` replaces every frame with black (Blind Gap control). `--mask evidence --chains <jsonl>`
+blacks out the ground-truth evidence regions (Evidence Sensitivity); `--mask random` is its control.
 `--model dummy` runs the whole pipeline without weights.
 """
 
@@ -12,22 +13,49 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import time
 from pathlib import Path
 
 from causalsight.eval.benchmarks import load_benchmark
+from causalsight.eval.masking import EvidenceIndex, mask_frames, masked_fraction, random_regions
 from causalsight.eval.video import blank_like, sample_frames
 from causalsight.models import load_backend
 
+N_TOTAL_FRAMES = {"clevrer": 128}
 
-def run(model: str, bench: str, split: str, root: Path, out: Path | None, limit: int | None, blind: bool, max_frames: int, **model_kw) -> dict:
+
+def run(
+    model: str,
+    bench: str,
+    split: str,
+    root: Path,
+    out: Path | None,
+    limit: int | None,
+    blind: bool,
+    max_frames: int,
+    mask: str = "none",
+    chains: Path | None = None,
+    seed: int = 0,
+    **model_kw,
+) -> dict:
     backend = load_backend(model, **model_kw)
     benchmark = load_benchmark(bench, root)
+    evidence = EvidenceIndex.from_chains(chains) if mask != "none" else None
+    if mask != "none" and evidence is None:
+        raise ValueError("--mask needs --chains <generated chains jsonl>")
+    rng = random.Random(seed)
+    n_total = N_TOTAL_FRAMES.get(bench, 128)
     rows: list[dict] = []
     frame_cache: dict[Path, list] = {}
     t0 = time.time()
     fout = out.open("w") if out else None
     for item in benchmark.items(split, limit):
+        regions = evidence.get(item.id) if evidence else []
+        if mask != "none" and not regions:
+            continue  # no localizable evidence for this item; skip so masked/unmasked sets match
+        if mask == "random":
+            regions = random_regions(regions, rng)
         if backend.name == "dummy":
             frames = []
         else:
@@ -37,9 +65,13 @@ def run(model: str, bench: str, split: str, root: Path, out: Path | None, limit:
             frames = frame_cache[item.video_path]
             if blind:
                 frames = blank_like(frames)
+            elif regions:
+                frames = mask_frames(frames, regions, n_total)
         raw = backend.generate(frames, item.prompt)
         sc = benchmark.score(item, raw)
         row = {"id": item.id, "question_type": item.question_type, "prompt": item.prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
+        if regions:
+            row["masked_fraction"] = round(masked_fraction(regions, n_total), 4)
         rows.append(row)
         if fout:
             fout.write(json.dumps(row) + "\n")
@@ -51,6 +83,7 @@ def run(model: str, bench: str, split: str, root: Path, out: Path | None, limit:
         "bench": bench,
         "split": split,
         "blind": blind,
+        "mask": mask,
         "max_frames": max_frames,
         "n": len(rows),
         "seconds": round(time.time() - t0, 1),
@@ -71,12 +104,18 @@ def main() -> None:
     p.add_argument("--root", type=Path, default=None, help="benchmark root (default data/raw/<bench>)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--blind", action="store_true", help="replace the video with black frames")
+    p.add_argument("--mask", choices=["none", "evidence", "random"], default="none", help="black out GT evidence regions, or same-size random regions")
+    p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions")
+    p.add_argument("--seed", type=int, default=0)
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
     root = args.root or Path("data/raw") / args.bench
-    summary = run(args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames, device=args.device)
+    summary = run(
+        args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
+        mask=args.mask, chains=args.chains, seed=args.seed, device=args.device,
+    )
     print(json.dumps(summary, indent=2))
 
 

@@ -1,0 +1,36 @@
+{
+  "model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "mask": "none",
+  "max_frames": 16,
+  "n": 50,
+  "seconds": 149.0,
+  "overall": 0.56,
+  "by_type": {
+    "descriptive": {
+      "n": 36,
+      "per_question": 0.6944444444444444
+    },
+    "explanatory": {
+      "n": 6,
+      "per_question": 0.3333333333333333,
+      "per_option": 0.6956521739130435
+    },
+    "predictive": {
+      "n": 2,
+      "per_question": 0.5,
+      "per_option": 0.75
+    },
+    "counterfactual": {
+      "n": 6,
+      "per_question": 0.0,
+      "per_option": 0.6363636363636364
+    },
+    "inferential(per_question)": {
+      "n": 14,
+      "per_question": 0.21428571428571427
+    }
+  }
+}
