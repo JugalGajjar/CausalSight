@@ -9,8 +9,8 @@
   "seed": 0,
   "max_frames": 16,
   "n": 200,
-  "seconds": 571.8,
-  "overall": 0.52,
+  "seconds": 575.8,
+  "overall": 0.505,
   "by_type": {
     "descriptive": {
       "n": 50,
@@ -19,21 +19,21 @@
     "explanatory": {
       "n": 50,
       "per_question": 0.28,
-      "per_option": 0.6777777777777778
+      "per_option": 0.6555555555555556
     },
     "predictive": {
       "n": 50,
-      "per_question": 0.72,
-      "per_option": 0.82
+      "per_question": 0.7,
+      "per_option": 0.78
     },
     "counterfactual": {
       "n": 50,
-      "per_question": 0.32,
-      "per_option": 0.6983240223463687
+      "per_question": 0.28,
+      "per_option": 0.7039106145251397
     },
     "inferential(per_question)": {
       "n": 150,
-      "per_question": 0.44
+      "per_question": 0.42
     }
   }
 }

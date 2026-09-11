@@ -9,31 +9,31 @@
   "seed": 0,
   "max_frames": 16,
   "n": 200,
-  "seconds": 575.0,
-  "overall": 0.46,
+  "seconds": 575.9,
+  "overall": 0.445,
   "by_type": {
     "descriptive": {
       "n": 50,
-      "per_question": 0.72
+      "per_question": 0.7
     },
     "explanatory": {
       "n": 50,
-      "per_question": 0.24,
-      "per_option": 0.6555555555555556
+      "per_question": 0.22,
+      "per_option": 0.6222222222222222
     },
     "predictive": {
       "n": 50,
-      "per_question": 0.64,
-      "per_option": 0.77
+      "per_question": 0.62,
+      "per_option": 0.73
     },
     "counterfactual": {
       "n": 50,
       "per_question": 0.24,
-      "per_option": 0.6703910614525139
+      "per_option": 0.6424581005586593
     },
     "inferential(per_question)": {
       "n": 150,
-      "per_question": 0.37333333333333335
+      "per_question": 0.36
     }
   }
 }
