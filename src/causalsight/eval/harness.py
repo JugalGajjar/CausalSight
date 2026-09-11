@@ -6,6 +6,8 @@
 Writes one JSONL row per item (id, question_type, prompt, raw, pred, gold, correct, ...) and a
 summary JSON next to it. `--blind` replaces every frame with black (Blind Gap control). `--mask evidence --chains <jsonl>`
 blacks out the ground-truth evidence regions (Evidence Sensitivity); `--mask random` is its control.
+Passing `--chains` at all restricts the run to items that have evidence, so plain, blind, and masked
+runs with the same `--chains --per-type --seed` evaluate exactly the same items.
 `--model dummy` runs the whole pipeline without weights.
 """
 
@@ -25,6 +27,19 @@ from causalsight.models import load_backend
 N_TOTAL_FRAMES = {"clevrer": 128}
 
 
+def stratified_sample(items: list, per_type: int, seed: int) -> list:
+    """Up to `per_type` items of each question type, chosen deterministically; original order kept."""
+    rng = random.Random(seed)
+    by_type: dict[str, list] = {}
+    for it in items:
+        by_type.setdefault(it.question_type, []).append(it)
+    chosen = set()
+    for its in by_type.values():
+        for it in rng.sample(its, min(per_type, len(its))):
+            chosen.add(it.id)
+    return [it for it in items if it.id in chosen]
+
+
 def run(
     model: str,
     bench: str,
@@ -37,11 +52,12 @@ def run(
     mask: str = "none",
     chains: Path | None = None,
     seed: int = 0,
+    per_type: int | None = None,
     **model_kw,
 ) -> dict:
     backend = load_backend(model, **model_kw)
     benchmark = load_benchmark(bench, root)
-    evidence = EvidenceIndex.from_chains(chains) if mask != "none" else None
+    evidence = EvidenceIndex.from_chains(chains) if chains else None
     if mask != "none" and evidence is None:
         raise ValueError("--mask needs --chains <generated chains jsonl>")
     rng = random.Random(seed)
@@ -50,10 +66,14 @@ def run(
     frame_cache: dict[Path, list] = {}
     t0 = time.time()
     fout = out.open("w") if out else None
-    for item in benchmark.items(split, limit):
+    items = list(benchmark.items(split, None if per_type else limit))
+    if evidence is not None:
+        # keep the item set identical across plain / blind / masked runs on the same chains file
+        items = [it for it in items if evidence.get(it.id)]
+    if per_type:
+        items = stratified_sample(items, per_type, seed)
+    for item in items:
         regions = evidence.get(item.id) if evidence else []
-        if mask != "none" and not regions:
-            continue  # no localizable evidence for this item; skip so masked/unmasked sets match
         if mask == "random":
             regions = random_regions(regions, rng)
         if backend.name == "dummy":
@@ -84,6 +104,9 @@ def run(
         "split": split,
         "blind": blind,
         "mask": mask,
+        "chains": str(chains) if chains else None,
+        "per_type": per_type,
+        "seed": seed,
         "max_frames": max_frames,
         "n": len(rows),
         "seconds": round(time.time() - t0, 1),
@@ -107,6 +130,7 @@ def main() -> None:
     p.add_argument("--mask", choices=["none", "evidence", "random"], default="none", help="black out GT evidence regions, or same-size random regions")
     p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--per-type", type=int, default=None, help="stratified subset: this many items per question type")
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
     p.add_argument("--out", type=Path, default=None)
@@ -114,7 +138,7 @@ def main() -> None:
     root = args.root or Path("data/raw") / args.bench
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
-        mask=args.mask, chains=args.chains, seed=args.seed, device=args.device,
+        mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, device=args.device,
     )
     print(json.dumps(summary, indent=2))
 

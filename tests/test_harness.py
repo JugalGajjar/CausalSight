@@ -32,6 +32,29 @@ def fake_clevrer(tmp_path: Path) -> Path:
     return root
 
 
+def test_exist_prompt_and_numeric_fallback(tmp_path):
+    root = fake_clevrer(tmp_path)
+    qs = json.loads((root / "questions" / "validation.json").read_text())
+    qs[0]["questions"].append({"question_id": 2, "question": "Are there any cubes?", "question_type": "descriptive", "question_subtype": "exist", "program": [], "answer": "no"})
+    (root / "questions" / "validation.json").write_text(json.dumps(qs))
+    b = ClevrerBenchmark(root)
+    it = list(b.items("validation"))[2]
+    assert it.prompt.endswith("Answer with yes or no.")
+    assert b.score(it, "0")["pred"] == "no" and b.score(it, "1")["pred"] == "yes"
+    assert b.score(it, "No.")["correct"] == 1
+
+
+def test_stratified_sample_is_deterministic():
+    from causalsight.eval.benchmarks import Item
+    from causalsight.eval.harness import stratified_sample
+
+    items = [Item(f"{t}{i}", t, Path("x"), "", "") for t in ("a", "b") for i in range(10)]
+    s1 = stratified_sample(items, 3, seed=1)
+    s2 = stratified_sample(items, 3, seed=1)
+    assert [i.id for i in s1] == [i.id for i in s2] and len(s1) == 6
+    assert [i.id for i in s1] != [i.id for i in stratified_sample(items, 3, seed=2)]
+
+
 def test_clevrer_items_and_scoring(tmp_path):
     b = ClevrerBenchmark(fake_clevrer(tmp_path))
     items = list(b.items("validation"))

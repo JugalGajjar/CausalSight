@@ -13,7 +13,13 @@ from pathlib import Path
 from causalsight.eval.benchmarks import Benchmark, Item
 from causalsight.eval.benchmarks.answers import LETTERS, normalize_short, parse_letters
 
-DESCRIPTIVE_PROMPT = "{q}\nAnswer with a single word or number."
+DESCRIPTIVE_PROMPT = {
+    "exist": "{q}\nAnswer with yes or no.",
+    "count": "{q}\nAnswer with a number.",
+    "query_color": "{q}\nAnswer with a single word.",
+    "query_material": "{q}\nAnswer with a single word.",
+    "query_shape": "{q}\nAnswer with a single word.",
+}
 MC_PROMPT = (
     "{q}\n{opts}\nOne or more options may be correct. Answer with the letters of all correct options, separated by commas. "
     "If none are correct, answer 'none'."
@@ -41,7 +47,8 @@ class ClevrerBenchmark(Benchmark):
                 t = q["question_type"]
                 qid = f"{v['scene_index']}_{q['question_id']}"
                 if t == "descriptive":
-                    yield Item(qid, t, vp, DESCRIPTIVE_PROMPT.format(q=q["question"]), normalize_short(str(q["answer"])), meta={"subtype": q.get("question_subtype")})
+                    st = q.get("question_subtype", "query_color")
+                    yield Item(qid, t, vp, DESCRIPTIVE_PROMPT.get(st, DESCRIPTIVE_PROMPT["query_color"]).format(q=q["question"]), normalize_short(str(q["answer"])), meta={"subtype": st})
                 else:
                     opts = [c["choice"] for c in q["choices"]]
                     gold = "".join(LETTERS[i] for i, c in enumerate(q["choices"]) if c["answer"] == "correct")
@@ -54,6 +61,8 @@ class ClevrerBenchmark(Benchmark):
     def score(self, item: Item, prediction: str) -> dict:
         if item.question_type == "descriptive":
             pred = normalize_short(prediction)
+            if item.meta.get("subtype") == "exist" and pred.isdigit():
+                pred = "no" if pred == "0" else "yes"  # models answer yes/no questions with counts
             return {"pred": pred, "correct": int(pred == item.gold)}
         pred = parse_letters(prediction, len(item.options))
         per_option = [int((L in pred) == (L in item.gold)) for L in LETTERS[: len(item.options)]]
