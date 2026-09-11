@@ -15,3 +15,8 @@ cs-eval "${COMMON[@]}" --blind         --out "results/stage0/${TAG}_blind.jsonl"
 cs-eval "${COMMON[@]}" --mask evidence --out "results/stage0/${TAG}_mask_evidence.jsonl"
 cs-eval "${COMMON[@]}" --mask random   --out "results/stage0/${TAG}_mask_random.jsonl"
 cs-faithfulness results/stage0 --tag "$TAG"
+
+# Object-track conditions (stronger intervention; see results/stage0/README.md)
+cs-eval "${COMMON[@]}" --mask track        --out "results/stage0/${TAG}_mask_track.jsonl"
+cs-eval "${COMMON[@]}" --mask track_random --out "results/stage0/${TAG}_mask_track_random.jsonl"
+cs-faithfulness results/stage0 --tag "$TAG"

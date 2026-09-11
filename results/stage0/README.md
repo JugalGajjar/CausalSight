@@ -9,12 +9,22 @@ sampled frames nearest each region's span); random-masked (same box sizes and sp
 
 Faithfulness table: `qwen3b_pilot_faithfulness.md` (paired bootstrap 95% CIs).
 
-Reading (pilot, wide CIs):
-* Blind gap is large on descriptive (0.62) and predictive (0.44) but small on explanatory (0.08):
-  explanatory answers are close to what the model produces without seeing the video.
-* Evidence masking flips 18.6% of correct answers vs 5.9% for random masks of equal size (ES gap 0.13),
-  largest on counterfactual (0.20). The base model does use the annotated evidence, but weakly.
-* Per-option accuracy on the MC types averages ~0.72, in the range Wu et al. (CVPR 2026) report for the
-  same base model (73.9%), so their CLEVRER "inferential" number is most likely per-option.
+Full run (`qwen3b_*`, 250 per type, 1000 items; ~48 min per condition on the M4 Pro):
+`qwen3b_faithfulness.md`. Pilot (`qwen3b_pilot_*`, 50 per type) kept for reference.
 
-Next: 250 per type (1000 items) for tight CIs, then the same four conditions after outcome-only GRPO.
+Reading (1000 items):
+* Per-question plain: descriptive 0.728, explanatory 0.288, predictive 0.660, counterfactual 0.320;
+  inferential per-question 0.423, per-option mean 0.736. Wu et al. (CVPR 2026) report 73.9% for the
+  same base model, so their CLEVRER "inferential" figure is per-option; Stage 0 reports both.
+* Blind gap 0.30 [0.27, 0.33]; positive on every type (explanatory 0.17 [0.12, 0.22]). The pilot's
+  near-zero explanatory gap was noise.
+* Moment-masking ES gap 0.06 [0.03, 0.10] overall, but -0.01 [-0.05, 0.03] on descriptive: masking an
+  object's box at one frame removes nothing when the object is visible in the other 15 frames. The
+  moment-level metric only works for event evidence (explanatory 0.17, counterfactual 0.11).
+  => added `--mask track` / `--mask track_random`: remove the *decisive* evidence objects (last triplet
+  of each chain) for the whole video vs remove the same number of other objects from the same video.
+  Items without a same-size control are skipped in both modes (kept: descriptive 172, explanatory 134,
+  predictive 43, counterfactual 250 of 250 each; mean 1.4 evidence objects). This is the CLEVRER
+  evidence-sensitivity metric going forward; the moment-level one stays for real video.
+
+Next: track conditions on the same 1000 items, then the same six conditions after outcome-only GRPO.

@@ -20,7 +20,13 @@ import time
 from pathlib import Path
 
 from causalsight.eval.benchmarks import load_benchmark
-from causalsight.eval.masking import EvidenceIndex, mask_frames, masked_fraction, random_regions
+from causalsight.eval.masking import (
+    EvidenceIndex,
+    TrackMasker,
+    mask_frames,
+    masked_fraction,
+    random_regions,
+)
 from causalsight.eval.video import blank_like, sample_frames
 from causalsight.models import load_backend
 
@@ -53,6 +59,7 @@ def run(
     chains: Path | None = None,
     seed: int = 0,
     per_type: int | None = None,
+    proposals_root: Path | None = None,
     **model_kw,
 ) -> dict:
     backend = load_backend(model, **model_kw)
@@ -62,6 +69,8 @@ def run(
         raise ValueError("--mask needs --chains <generated chains jsonl>")
     rng = random.Random(seed)
     n_total = N_TOTAL_FRAMES.get(bench, 128)
+    tracker = TrackMasker(proposals_root or root / "derender_proposals") if mask in ("track", "track_random") else None
+    track_evidence = EvidenceIndex.from_chains(chains, last_only=True) if (tracker is not None and chains) else None
     rows: list[dict] = []
     frame_cache: dict[Path, list] = {}
     t0 = time.time()
@@ -76,6 +85,16 @@ def run(
         regions = evidence.get(item.id) if evidence else []
         if mask == "random":
             regions = random_regions(regions, rng)
+        elif tracker is not None:
+            scene_index = int(item.id.split("_")[0])
+            decisive = track_evidence.get(item.id) if track_evidence else []
+            control = mask == "track_random"
+            # decide skipping identically in both track modes: need matched evidence AND a same-size control
+            ev_objs = tracker.evidence_objects(scene_index, decisive)
+            others = tracker.all_objects(scene_index) - ev_objs
+            if not ev_objs or len(others) < len(ev_objs):
+                continue
+            regions = tracker.regions_for(scene_index, decisive, n_total, max_frames, control=control, rng=rng)
         if backend.name == "dummy":
             frames = []
         else:
@@ -127,7 +146,14 @@ def main() -> None:
     p.add_argument("--root", type=Path, default=None, help="benchmark root (default data/raw/<bench>)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--blind", action="store_true", help="replace the video with black frames")
-    p.add_argument("--mask", choices=["none", "evidence", "random"], default="none", help="black out GT evidence regions, or same-size random regions")
+    p.add_argument(
+        "--mask",
+        choices=["none", "evidence", "random", "track", "track_random"],
+        default="none",
+        help="evidence: black out GT evidence boxes at their moments; random: same boxes at random positions; "
+        "track: remove the evidence objects for the whole video; track_random: remove other objects instead",
+    )
+    p.add_argument("--proposals-root", type=Path, default=None, help="CLEVRER derender proposals dir (track modes)")
     p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--per-type", type=int, default=None, help="stratified subset: this many items per question type")
@@ -138,7 +164,7 @@ def main() -> None:
     root = args.root or Path("data/raw") / args.bench
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
-        mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, device=args.device,
+        mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root, device=args.device,
     )
     print(json.dumps(summary, indent=2))
 

@@ -79,13 +79,15 @@ class EvidenceIndex:
         self.regions = regions
 
     @classmethod
-    def from_chains(cls, path: Path | str) -> EvidenceIndex:
+    def from_chains(cls, path: Path | str, last_only: bool = False) -> EvidenceIndex:
+        """`last_only`: keep only each chain's final triplet, the decisive evidence (for MC questions the
+        union over the per-option chains)."""
         regions: dict[str, set[Region]] = defaultdict(set)
         with Path(path).open() as f:
             for line in f:
                 c = json.loads(line)
                 key = f"{c['meta']['scene_index']}_{c['meta']['question_id']}"
-                for t in c["triplets"]:
+                for t in (c["triplets"][-1:] if last_only else c["triplets"]):
                     e = t["evidence"]
                     box = tuple(e["box"])
                     if box == (0.0, 0.0, 1.0, 1.0):
@@ -99,3 +101,79 @@ class EvidenceIndex:
 
 def evidence_to_region(e: Evidence) -> Region:
     return (e.t_start, e.t_end, tuple(e.box))
+
+
+# ---------------------------------------------------------------- object-track masking (CLEVRER)
+
+
+def _iou(a: tuple[float, float, float, float], b: tuple[float, float, float, float]) -> float:
+    iw = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+    ih = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+    inter = iw * ih
+    union = (a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1]) - inter
+    return inter / union if union > 0 else 0.0
+
+
+class TrackMasker:
+    """Remove evidence *objects* for the whole video instead of a box at one moment.
+
+    Evidence regions are matched to proposal detections at their frames (IoU >= `min_iou`, or the
+    region containing the detection); the matched objects' boxes are then blacked out on every
+    sampled frame where they are detected. The control removes the same number of *other* objects
+    from the same video; items whose video has too few other objects are skipped in both modes.
+    """
+
+    def __init__(self, proposals_root: Path | str, min_iou: float = 0.3) -> None:
+        self.root = Path(proposals_root)
+        self.min_iou = min_iou
+        self._cache: dict[int, object] = {}
+
+    def _index(self, scene_index: int):
+        from causalsight.data.clevrer_evidence import ProposalIndex
+
+        if scene_index not in self._cache:
+            self._cache.clear()
+            self._cache[scene_index] = ProposalIndex.load(self.root / f"proposal_{scene_index:05d}.json")
+        return self._cache[scene_index]
+
+    def evidence_objects(self, scene_index: int, regions: list[Region]) -> set[tuple[str, str, str]]:
+        idx = self._index(scene_index)
+        found: set[tuple[str, str, str]] = set()
+        for t0, t1, box in regions:
+            for f in range(t0, t1 + 1):
+                for key, (b, _score) in idx._frame(f).items():
+                    contained = b[0] >= box[0] - 0.01 and b[1] >= box[1] - 0.01 and b[2] <= box[2] + 0.01 and b[3] <= box[3] + 0.01
+                    if contained or _iou(b, box) >= self.min_iou:
+                        found.add(key)
+        return found
+
+    def all_objects(self, scene_index: int) -> set[tuple[str, str, str]]:
+        idx = self._index(scene_index)
+        keys: set[tuple[str, str, str]] = set()
+        for f in range(0, idx.n_frames, 8):
+            keys |= set(idx._frame(f).keys())
+        return keys
+
+    def track_regions(self, scene_index: int, objects: set[tuple[str, str, str]], sampled: list[int]) -> list[Region]:
+        """One single-frame region per (object, sampled frame) where the object is detected."""
+        idx = self._index(scene_index)
+        regs: list[Region] = []
+        for f in sampled:
+            fr = idx._frame(f)
+            for key in objects:
+                if key in fr:
+                    regs.append((f, f, fr[key][0]))
+        return regs
+
+    def regions_for(self, scene_index: int, regions: list[Region], n_total: int, n_sampled: int, control: bool, rng: random.Random) -> list[Region]:
+        sampled = sampled_frame_indices(n_total, n_sampled)
+        ev = self.evidence_objects(scene_index, regions)
+        if not ev:
+            return []
+        if not control:
+            return self.track_regions(scene_index, ev, sampled)
+        others = sorted(self.all_objects(scene_index) - ev)
+        if len(others) < len(ev):
+            return []  # no same-size control in this video: the caller skips the item in both track modes
+        pick = set(rng.sample(others, len(ev)))
+        return self.track_regions(scene_index, pick, sampled)
