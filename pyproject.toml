@@ -37,6 +37,7 @@ dev = [
 [project.scripts]
 cs-eval = "causalsight.eval.harness:main"
 cs-triplets = "causalsight.data.clevrer_triplets:main"
+cs-clevrer-check = "causalsight.data.clevrer_check:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
