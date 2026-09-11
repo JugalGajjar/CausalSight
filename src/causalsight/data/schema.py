@@ -28,7 +28,7 @@ class Evidence:
         if x1 <= x0 or y1 <= y0:
             raise ValueError(f"box has non-positive area: {self.box}")
 
-    def spatial_iou(self, other: "Evidence") -> float:
+    def spatial_iou(self, other: Evidence) -> float:
         ax0, ay0, ax1, ay1 = self.box
         bx0, by0, bx1, by1 = other.box
         iw = max(0.0, min(ax1, bx1) - max(ax0, bx0))
@@ -37,12 +37,12 @@ class Evidence:
         union = (ax1 - ax0) * (ay1 - ay0) + (bx1 - bx0) * (by1 - by0) - inter
         return inter / union if union > 0 else 0.0
 
-    def temporal_iou(self, other: "Evidence") -> float:
+    def temporal_iou(self, other: Evidence) -> float:
         inter = max(0, min(self.t_end, other.t_end) - max(self.t_start, other.t_start) + 1)
         union = (self.t_end - self.t_start + 1) + (other.t_end - other.t_start + 1) - inter
         return inter / union if union > 0 else 0.0
 
-    def st_iou(self, other: "Evidence") -> float:
+    def st_iou(self, other: Evidence) -> float:
         """Spatiotemporal IoU used by R_ground and R_proc: temporal-IoU x spatial-IoU."""
         return self.temporal_iou(other) * self.spatial_iou(other)
 
@@ -87,7 +87,7 @@ class TripletChain:
                     frontier.append(j)
         return out
 
-    def without_step(self, i: int) -> "TripletChain":
+    def without_step(self, i: int) -> TripletChain:
         """Intervened chain c_{-i}: drop step i and everything downstream of it."""
         drop = self.dependency_closure(i) | {i}
         keep = [j for j in range(len(self.triplets)) if j not in drop]
@@ -114,7 +114,7 @@ class TripletChain:
         return json.dumps(asdict(self), ensure_ascii=False)
 
     @classmethod
-    def from_json(cls, s: str) -> "TripletChain":
+    def from_json(cls, s: str) -> TripletChain:
         d = json.loads(s)
         triplets = [
             Triplet(

@@ -27,7 +27,7 @@ def main() -> None:
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
-    raise NotImplementedError("harness body not written yet; see notes/PLAN.md Phase B")
+    raise NotImplementedError(f"harness body not written yet (model={args.model}, bench={args.bench}); see notes/PLAN.md Phase B")
 
 
 if __name__ == "__main__":

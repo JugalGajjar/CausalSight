@@ -38,6 +38,7 @@ dev = [
 cs-eval = "causalsight.eval.harness:main"
 cs-triplets = "causalsight.data.clevrer_triplets:main"
 cs-clevrer-check = "causalsight.data.clevrer_check:main"
+cs-clevrer-validate = "causalsight.data.clevrer_validate:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
