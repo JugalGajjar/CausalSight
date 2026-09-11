@@ -85,7 +85,7 @@ def run(
             frames = frame_cache[item.video_path]
             if blind:
                 frames = blank_like(frames)
-            elif regions:
+            elif mask != "none":
                 frames = mask_frames(frames, regions, n_total)
         raw = backend.generate(frames, item.prompt)
         sc = benchmark.score(item, raw)

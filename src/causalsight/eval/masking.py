@@ -25,11 +25,21 @@ def sampled_frame_indices(n_total: int, n_sampled: int) -> list[int]:
     return [round(i * (n_total - 1) / (n_sampled - 1)) for i in range(n_sampled)]
 
 
+def span_tolerance(n_total: int, n_sampled: int) -> int:
+    """Half the sampling stride: a region is applied to the sampled frame(s) nearest its span, so a
+    single-frame span (the typical collision moment) is never skipped just because that exact frame
+    was not sampled."""
+    if n_sampled <= 1 or n_total <= n_sampled:
+        return 0
+    return max(0, round((n_total - 1) / (n_sampled - 1) / 2))
+
+
 def mask_frames(frames: list[Image.Image], regions: list[Region], n_total: int) -> list[Image.Image]:
     idx = sampled_frame_indices(n_total, len(frames))
+    tol = span_tolerance(n_total, len(frames))
     out = []
     for f, orig in zip(frames, idx):
-        hits = [b for (t0, t1, b) in regions if t0 <= orig <= t1]
+        hits = [b for (t0, t1, b) in regions if t0 - tol <= orig <= t1 + tol]
         if not hits:
             out.append(f)
             continue
