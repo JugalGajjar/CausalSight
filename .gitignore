@@ -34,3 +34,4 @@ notes/
 # exported training files (regenerable)
 data/rl/
 data/sft/
+data/frames/
