@@ -1,6 +1,6 @@
 # Running on Colab (single GPU)
 
-Budget plan (A100 80GB, 26 h): Stage 0 GRPO 1,000 steps ~4.5 h, Stage 1 SFT ~4 h, Stage 2 CSR GRPO 1,000 steps ~6 h, reserve ~11 h. Re-size step counts from the pilot's seconds/step.
+Budget plan (A100 80GB, 44 h): Stage 0 GRPO 1,500 steps ~7 h, Stage 1 SFT ~4 h, Stage 2 CSR GRPO 1,500 steps ~9 h, one ablation (Stage 2 without R_nec) ~9 h, reserve ~15 h. Re-size step counts from the pilot's seconds/step.
 Evaluation is never run on Colab; checkpoints are downloaded and scored on the Mac.
 
 ## Once, on the Mac
@@ -17,7 +17,7 @@ from google.colab import drive; drive.mount('/content/drive')
 !git clone https://github.com/JugalGajjar/CausalSight.git /content/CausalSight
 !bash /content/CausalSight/colab/setup.sh /content/drive/MyDrive/causalsight/train.zip
 ```
-Pilot first (20 steps, prints seconds per step; multiply by 1000 to size the run):
+Pilot first (20 steps, prints seconds per step; multiply by 1500 to size the run):
 ```python
 !cd /content/CausalSight && cs-grpo --config configs/stage0_grpo.yaml --data /content/data/train --out /content/drive/MyDrive/causalsight/runs/stage0 --steps 20
 ```
