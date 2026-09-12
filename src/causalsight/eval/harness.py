@@ -29,6 +29,10 @@ from causalsight.eval.masking import (
 )
 from causalsight.eval.video import blank_like, sample_frames
 from causalsight.models import load_backend
+from causalsight.train.format import ANSWER_RE, SYSTEM_PROMPT
+from causalsight.train.grpo import PLAIN_SYSTEM
+
+INSTR = {"none": "", "plain": PLAIN_SYSTEM, "chain": SYSTEM_PROMPT}
 
 N_TOTAL_FRAMES = {"clevrer": 128}
 
@@ -60,6 +64,8 @@ def run(
     seed: int = 0,
     per_type: int | None = None,
     proposals_root: Path | None = None,
+    instr: str = "none",
+    max_new_tokens: int = 64,
     **model_kw,
 ) -> dict:
     backend = load_backend(model, **model_kw)
@@ -103,8 +109,10 @@ def run(
                 frames = blank_like(frames)
             elif mask != "none":
                 frames = mask_frames(frames, regions, n_total)
-        raw = backend.generate(frames, item.prompt)
-        sc = benchmark.score(item, raw)
+        prompt = item.prompt + ("\n" + INSTR[instr] if INSTR[instr] else "")
+        raw = backend.generate(frames, prompt, max_new_tokens=max_new_tokens)
+        m = ANSWER_RE.search(raw)
+        sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
         row = {"id": item.id, "question_type": item.question_type, "prompt": item.prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
         if regions:
             row["masked_fraction"] = round(masked_fraction(regions, n_total), 4)
@@ -119,6 +127,8 @@ def run(
         "bench": bench,
         "split": split,
         "blind": blind,
+        "instr": instr,
+        "max_new_tokens": max_new_tokens,
         "mask": mask,
         "chains": str(chains) if chains else None,
         "per_type": per_type,
@@ -154,6 +164,8 @@ def main() -> None:
     p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--per-type", type=int, default=None, help="stratified subset: this many items per question type")
+    p.add_argument("--instr", choices=list(INSTR), default="none", help="append the training-time format instruction (plain: <think>/<answer>; chain: triplet steps)")
+    p.add_argument("--max-new-tokens", type=int, default=64, help="raise to ~384 for --instr plain/chain")
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
     p.add_argument("--out", type=Path, default=None)
@@ -161,7 +173,8 @@ def main() -> None:
     root = args.root or Path("data/raw") / args.bench
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
-        mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root, device=args.device,
+        mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, device=args.device,
     )
     print(json.dumps(summary, indent=2))
 

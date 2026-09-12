@@ -1,6 +1,14 @@
-"""Qwen2.5-VL backend via transformers. Works on CUDA, and on Apple MPS for small smoke tests."""
+"""Qwen2.5-VL backend via transformers. Works on CUDA, and on Apple MPS for small smoke tests.
+
+`model_id` may be a Hugging Face id or a local LoRA adapter directory (containing adapter_config.json,
+as saved by cs-grpo / cs-sft); the base model named in the adapter config is loaded and the adapter is
+merged in, so evaluation of a trained checkpoint is a drop-in `--model runs/stage0/adapter`.
+"""
 
 from __future__ import annotations
+
+import json
+from pathlib import Path
 
 from PIL import Image
 
@@ -15,8 +23,16 @@ class QwenVLBackend(VLMBackend):
         self.name = model_id
         self.device = device or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         torch_dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[dtype]
-        self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_id, torch_dtype=torch_dtype).to(self.device).eval()
-        self.processor = AutoProcessor.from_pretrained(model_id)
+        adapter = Path(model_id) / "adapter_config.json"
+        base_id = json.loads(adapter.read_text())["base_model_name_or_path"] if adapter.exists() else model_id
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(base_id, torch_dtype=torch_dtype)
+        if adapter.exists():
+            from peft import PeftModel
+
+            model = PeftModel.from_pretrained(model, model_id).merge_and_unload()
+            print(f"loaded adapter {model_id} on {base_id} (merged)")
+        self.model = model.to(self.device).eval()
+        self.processor = AutoProcessor.from_pretrained(base_id)
         self.max_pixels = max_pixels
 
     def generate(self, frames: list[Image.Image], prompt: str, max_new_tokens: int = 64) -> str:

@@ -35,3 +35,6 @@ notes/
 data/rl/
 data/sft/
 data/frames/
+
+# training runs (adapters, logs) live on Drive; keep local copies out of git
+runs/

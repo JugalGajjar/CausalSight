@@ -75,3 +75,31 @@ def test_harness_end_to_end_with_dummy(tmp_path):
     assert rows[1]["correct"] == 1  # dummy answers "A", which is the correct option
     assert summary["by_type"]["predictive"]["per_option"] == 1.0
     assert out.with_suffix(".summary.json").exists()
+
+
+def test_harness_instr_and_answer_tag_extraction(tmp_path, monkeypatch):
+    """A tagged completion must be scored on its <answer> content, and --instr appends the instruction."""
+    import causalsight.eval.harness as H
+    from causalsight.models.base import VLMBackend
+
+    class Tagged(VLMBackend):
+        name = "dummy"
+
+        def __init__(self, **_):
+            self.prompts = []
+
+        def generate(self, frames, prompt, max_new_tokens=64):
+            self.prompts.append(prompt)
+            return "<think>the cube hits it</think><answer>two</answer>"
+
+    inst = {}
+
+    def fake_load(model, **kw):
+        inst["b"] = Tagged()
+        return inst["b"]
+
+    monkeypatch.setattr(H, "load_backend", fake_load)
+    root = fake_clevrer(tmp_path)
+    summary = H.run("dummy", "clevrer", "validation", root, None, 1, False, 16, instr="plain")
+    assert summary["by_type"]["descriptive"]["per_question"] == 1.0
+    assert inst["b"].prompts[0].endswith(H.PLAIN_SYSTEM)

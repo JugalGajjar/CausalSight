@@ -43,6 +43,7 @@ cs-faithfulness = "causalsight.eval.faithfulness.report:main"
 cs-export = "causalsight.data.export_rl:main"
 cs-frames = "causalsight.train.frames:main"
 cs-grpo = "causalsight.train.grpo:main"
+cs-trainlog = "causalsight.train.trainlog:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

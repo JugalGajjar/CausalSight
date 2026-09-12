@@ -10,7 +10,9 @@ def load_backend(model: str, **kw) -> VLMBackend:
         from causalsight.models.dummy import DummyBackend
 
         return DummyBackend(**kw)
-    if "qwen" in model.lower():
+    from pathlib import Path
+
+    if "qwen" in model.lower() or (Path(model) / "adapter_config.json").exists():
         from causalsight.models.qwen_vl import QwenVLBackend
 
         return QwenVLBackend(model, **kw)
