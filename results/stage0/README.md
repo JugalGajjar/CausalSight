@@ -42,5 +42,14 @@ Track conditions (599 of the 1000 items have a same-size control):
   predictive/counterfactual track gaps are a weaker test than descriptive/explanatory (1-2 objects).
   Both track conditions must be re-run after regenerating chains with roles.
 
-Next: regenerate chains with roles, re-run the two track conditions, then the same six conditions
-after outcome-only GRPO.
+Final track results (chains with roles, size-matched random-position control, 931/1000 items):
+
+| type | n_track | flip_track | flip_track_random | track_gap [95% CI] |
+|---|---|---|---|---|
+| ALL | 931 | 0.599 | 0.093 | 0.505 [0.45, 0.56] |
+| descriptive | 207 | 0.753 | 0.093 | 0.660 [0.56, 0.74] |
+| explanatory | 224 | 0.742 | 0.030 | 0.712 [0.60, 0.82] |
+| predictive | 250 | 0.412 | 0.085 | 0.327 [0.25, 0.41] |
+| counterfactual | 250 | 0.575 | 0.163 | 0.412 [0.28, 0.54] |
+
+This is the pre-RL reference row for Stage 0. The same six conditions are run on every trained checkpoint.

@@ -1,0 +1,28 @@
+# Stage 0: outcome-only GRPO on Qwen2.5-VL-3B, single H100 80GB. ~4 h for 1500 steps (estimate; pilot first).
+model: Qwen/Qwen2.5-VL-3B-Instruct
+data_file: rl_subset.jsonl        # from cs-frames
+prompt_style: plain               # <think>/<answer> only; no triplet format at Stage 0
+instr_in_user: true               # format instruction after the question (4/24 tagged vs 1/24 as system prompt)
+n_frames: 16
+group_size: 8
+micro_batch: 4                    # completions per forward/backward; lower if OOM
+max_new_tokens: 256
+temperature: 1.0
+lr: 1.0e-5                        # LoRA; Video-R1 uses 1e-6 for full fine-tuning
+kl_beta: 0.04
+max_grad_norm: 1.0
+steps: 1500
+save_every: 50
+log_every: 1
+seed: 0
+dtype: bfloat16
+attn: sdpa
+gradient_checkpointing: true
+lora:
+  r: 64
+  alpha: 128
+  dropout: 0.05
+  targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+rewards:
+  outcome_lenient: 1.0   # answer scored with or without tags: signal from step 1
+  format: 0.5            # <think>..</think><answer>..</answer>; base model uses tags ~15% of the time

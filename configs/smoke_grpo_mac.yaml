@@ -1,0 +1,28 @@
+# Toy-scale config to validate the training loop on the Mac (MPS). Not for real training.
+model: Qwen/Qwen2.5-VL-3B-Instruct
+data_file: rl_subset.jsonl
+prompt_style: plain
+instr_in_user: true
+n_frames: 4
+group_size: 2
+micro_batch: 1
+max_new_tokens: 32
+temperature: 1.0
+lr: 1.0e-5
+kl_beta: 0.04
+max_grad_norm: 1.0
+steps: 2
+save_every: 2
+log_every: 1
+seed: 0
+dtype: float32
+attn: sdpa
+gradient_checkpointing: false
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  targets: [q_proj, v_proj]
+rewards:
+  outcome_lenient: 1.0   # answer scored with or without tags: signal from step 1
+  format: 0.5            # <think>..</think><answer>..</answer>; base model uses tags ~15% of the time

@@ -8,32 +8,32 @@
   "per_type": 250,
   "seed": 0,
   "max_frames": 16,
-  "n": 599,
-  "seconds": 1763.6,
-  "overall": 0.24707846410684475,
+  "n": 931,
+  "seconds": 2692.1,
+  "overall": 0.25241675617615467,
   "by_type": {
     "descriptive": {
-      "n": 172,
-      "per_question": 0.2558139534883721
+      "n": 207,
+      "per_question": 0.24154589371980675
     },
     "explanatory": {
-      "n": 134,
-      "per_question": 0.06716417910447761,
-      "per_option": 0.5133470225872689
+      "n": 224,
+      "per_question": 0.08482142857142858,
+      "per_option": 0.5286935286935287
     },
     "predictive": {
-      "n": 43,
-      "per_question": 0.4418604651162791,
-      "per_option": 0.4883720930232558
+      "n": 250,
+      "per_question": 0.484,
+      "per_option": 0.534
     },
     "counterfactual": {
       "n": 250,
-      "per_question": 0.304,
-      "per_option": 0.7010192525481314
+      "per_question": 0.18,
+      "per_option": 0.5707814269535674
     },
     "inferential(per_question)": {
-      "n": 427,
-      "per_question": 0.24355971896955503
+      "n": 724,
+      "per_question": 0.255524861878453
     }
   }
 }
