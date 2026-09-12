@@ -74,6 +74,7 @@ class GRPOTrainer:
         self.records = load_records(data_root / cfg["data_file"])
         self.data_root = data_root
         self.rewards = [(name, REWARDS[name], float(w)) for name, w in cfg["rewards"].items()]
+        self.kl_clip = float(cfg.get("kl_log_ratio_clip", 5.0))
         self.rng = random.Random(cfg.get("seed", 0))
         self.order = list(range(len(self.records)))
         self.rng.shuffle(self.order)
@@ -200,6 +201,7 @@ class GRPOTrainer:
         micro = self.cfg.get("micro_batch", g)
         beta = self.cfg.get("kl_beta", 0.04)
         total_loss, total_kl = 0.0, 0.0
+        n_clipped, n_tokens = 0, 0
         self.opt.zero_grad(set_to_none=True)
         for s in range(0, g, micro):
             comp = completions[s : s + micro]
@@ -207,7 +209,13 @@ class GRPOTrainer:
             pol_lp, _ = self._completion_logprobs(inputs, comp, use_adapter=True)
             # on-policy single update: ratio == 1 in value, gradient flows through pol_lp
             ratio = torch.exp(pol_lp - pol_lp.detach())
-            kl = torch.exp(ref_lp - pol_lp) - (ref_lp - pol_lp) - 1  # k3 estimator, >= 0
+            # k3 KL estimator, >= 0. The log-ratio is clamped: with temperature-1 sampling an occasional
+            # low-probability token that the reference rates highly gives exp(ref - pol) in the thousands
+            # and a single token then dominates the step (observed: window-mean KL > 200 in Stage 0 run 1).
+            log_ratio = (ref_lp - pol_lp).clamp(-self.kl_clip, self.kl_clip)
+            n_clipped += int(((ref_lp - pol_lp).abs() > self.kl_clip).sum())
+            n_tokens += int(mask.sum())
+            kl = torch.exp(log_ratio) - log_ratio - 1
             per_tok = -(ratio * adv[s : s + micro].unsqueeze(1) - beta * kl)
             loss = ((per_tok * mask).sum(1) / mask.sum(1).clamp(min=1)).sum() / g
             loss.backward()
@@ -218,7 +226,14 @@ class GRPOTrainer:
         grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.get("max_grad_norm", 1.0))
         self.opt.step()
         self.model.eval()
-        return {**stats_common, "loss": total_loss, "kl": total_kl / max(1, math.ceil(g / micro)), "grad_norm": float(grad_norm), "skipped": 0}
+        return {
+            **stats_common,
+            "loss": total_loss,
+            "kl": total_kl / max(1, math.ceil(g / micro)),
+            "kl_clip_frac": n_clipped / max(1, n_tokens),
+            "grad_norm": float(grad_norm),
+            "skipped": 0,
+        }
 
     def train(self) -> None:
         total = min(self.cfg["steps"], len(self.order))
