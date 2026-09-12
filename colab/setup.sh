@@ -6,6 +6,7 @@ FRAMES_ZIP="${1:?path to frames zip on Drive, e.g. /content/drive/MyDrive/causal
 cd /content/CausalSight
 pip install -q -e . 
 pip install -q "transformers>=4.51" "peft>=0.13" "qwen-vl-utils>=0.0.8" accelerate safetensors pyyaml av pillow
+pip uninstall -y -q torchao 2>/dev/null || true   # Colab ships torchao 0.10, which PEFT's LoRA dispatcher rejects; unused here
 mkdir -p /content/data && cd /content/data
 [ -d "$(basename "${FRAMES_ZIP%.zip}")" ] || unzip -q "$FRAMES_ZIP" -d /content/data
 nvidia-smi --query-gpu=name,memory.total --format=csv
