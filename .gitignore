@@ -30,3 +30,7 @@ wandb/
 
 # private notes, plan, and proposal drafts
 notes/
+
+# exported training files (regenerable)
+data/rl/
+data/sft/

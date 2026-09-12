@@ -27,4 +27,20 @@ Reading (1000 items):
   predictive 43, counterfactual 250 of 250 each; mean 1.4 evidence objects). This is the CLEVRER
   evidence-sensitivity metric going forward; the moment-level one stays for real video.
 
-Next: track conditions on the same 1000 items, then the same six conditions after outcome-only GRPO.
+Track conditions (599 of the 1000 items have a same-size control):
+* descriptive track gap 0.65 [0.55, 0.74] (flip 0.74 vs 0.09), explanatory 0.57 [0.40, 0.74],
+  predictive 0.36 [0.14, 0.57]. Removing the decisive evidence object breaks the answer; removing
+  another object mostly does not. This is the evidence-sensitivity metric for CLEVRER.
+* counterfactual came out at -0.20 in the first track run because the "last triplet" of a counterfactual
+  chain is the hypothetically *removed* object, not the pair whose collision is asked about. Fixed by
+  recording triplet roles in the generator and using the observed-fact step (role=observe) as the
+  decisive evidence for predictive and counterfactual chains.
+* The "remove other objects" control needs spare objects, which pooled MC evidence rarely leaves
+  (2/250 counterfactual items). Control changed to size-matched copies of the evidence tracks at random
+  positions that avoid the evidence boxes: same masked area and timing, different place. Coverage
+  931/1000. Caveat: MC decisive evidence is pooled over all options (mean ~4 objects), so the
+  predictive/counterfactual track gaps are a weaker test than descriptive/explanatory (1-2 objects).
+  Both track conditions must be re-run after regenerating chains with roles.
+
+Next: regenerate chains with roles, re-run the two track conditions, then the same six conditions
+after outcome-only GRPO.

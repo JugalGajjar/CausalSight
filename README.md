@@ -28,6 +28,19 @@ cs-clevrer-validate descriptive --n-videos 1000            # executor vs ground 
 cs-triplets --split train --out data/triplets/clevrer_train.jsonl
 cs-eval --model Qwen/Qwen2.5-VL-3B-Instruct --bench clevrer --limit 200 --out results/zeroshot.jsonl
 cs-eval --model dummy --bench clevrer --limit 20           # pipeline check without weights
+bash data/scripts/stage0_baseline.sh Qwen/Qwen2.5-VL-3B-Instruct 250 qwen3b   # Stage 0: 6 conditions + report
+cs-export rl  --split train --out data/rl/clevrer_train_rl.jsonl               # GRPO questions (Video-R1-style fields)
+cs-export sft --split train --chains data/triplets/clevrer_train.jsonl --out data/sft/clevrer_train_sft.jsonl
+```
+
+Model output format for chains (see `src/causalsight/train/format.py`):
+
+```
+<think>
+[1] Q: Which object is the gray sphere? | A: the gray rubber sphere | E: t=0-0 box=(0.360,0.620,0.470,0.790) | deps=
+[2] Q: Which collision involving the gray sphere happens in the video? | A: ... | E: t=17-21 box=(...) | deps=1
+</think>
+<answer>blue</answer>
 ```
 
 ## Layout

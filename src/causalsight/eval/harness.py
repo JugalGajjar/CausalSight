@@ -89,12 +89,9 @@ def run(
             scene_index = int(item.id.split("_")[0])
             decisive = track_evidence.get(item.id) if track_evidence else []
             control = mask == "track_random"
-            # decide skipping identically in both track modes: need matched evidence AND a same-size control
-            ev_objs = tracker.evidence_objects(scene_index, decisive)
-            others = tracker.all_objects(scene_index) - ev_objs
-            if not ev_objs or len(others) < len(ev_objs):
-                continue
             regions = tracker.regions_for(scene_index, decisive, n_total, max_frames, control=control, rng=rng)
+            if not regions:
+                continue  # decisive evidence matched no detection; skipped identically in both track modes
         if backend.name == "dummy":
             frames = []
         else:
@@ -151,7 +148,7 @@ def main() -> None:
         choices=["none", "evidence", "random", "track", "track_random"],
         default="none",
         help="evidence: black out GT evidence boxes at their moments; random: same boxes at random positions; "
-        "track: remove the evidence objects for the whole video; track_random: remove other objects instead",
+        "track: remove the decisive evidence objects for the whole video; track_random: same-size masks elsewhere",
     )
     p.add_argument("--proposals-root", type=Path, default=None, help="CLEVRER derender proposals dir (track modes)")
     p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions")

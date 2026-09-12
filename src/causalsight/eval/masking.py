@@ -72,6 +72,15 @@ def masked_fraction(regions: list[Region], n_total: int) -> float:
     return tot / n_total
 
 
+def decisive_triplets(chain: dict) -> list[dict]:
+    ts = chain["triplets"]
+    if chain.get("question_type") in ("predictive", "counterfactual"):
+        obs = [t for t in ts if t.get("role") == "observe" or (t.get("role") is None and t["question"].startswith("Do "))]
+        if obs:
+            return obs
+    return ts[-1:]
+
+
 class EvidenceIndex:
     """Evidence regions per CLEVRER question, from generated chain files. Key: '<scene>_<qid>'."""
 
@@ -80,14 +89,16 @@ class EvidenceIndex:
 
     @classmethod
     def from_chains(cls, path: Path | str, last_only: bool = False) -> EvidenceIndex:
-        """`last_only`: keep only each chain's final triplet, the decisive evidence (for MC questions the
-        union over the per-option chains)."""
+        """`last_only`: keep only the *decisive* triplet(s) of each chain (for MC questions the union over
+        the per-option chains): the observed-fact step ("do X and Y collide?", role=observe) for predictive
+        and counterfactual chains, otherwise the final triplet. Older chain files without roles fall back
+        to the question prefix."""
         regions: dict[str, set[Region]] = defaultdict(set)
         with Path(path).open() as f:
             for line in f:
                 c = json.loads(line)
                 key = f"{c['meta']['scene_index']}_{c['meta']['question_id']}"
-                for t in (c["triplets"][-1:] if last_only else c["triplets"]):
+                for t in (decisive_triplets(c) if last_only else c["triplets"]):
                     e = t["evidence"]
                     box = tuple(e["box"])
                     if box == (0.0, 0.0, 1.0, 1.0):
@@ -119,8 +130,8 @@ class TrackMasker:
 
     Evidence regions are matched to proposal detections at their frames (IoU >= `min_iou`, or the
     region containing the detection); the matched objects' boxes are then blacked out on every
-    sampled frame where they are detected. The control removes the same number of *other* objects
-    from the same video; items whose video has too few other objects are skipped in both modes.
+    sampled frame where they are detected. The control masks copies of the same tracks at random
+    positions that avoid the evidence boxes: identical masked area and timing, different location.
     """
 
     def __init__(self, proposals_root: Path | str, min_iou: float = 0.3) -> None:
@@ -166,14 +177,30 @@ class TrackMasker:
         return regs
 
     def regions_for(self, scene_index: int, regions: list[Region], n_total: int, n_sampled: int, control: bool, rng: random.Random) -> list[Region]:
+        """Evidence-object tracks, or (control) copies of those tracks at random positions that do not
+        overlap the evidence boxes on the same frame: same masked area and timing, different place."""
         sampled = sampled_frame_indices(n_total, n_sampled)
         ev = self.evidence_objects(scene_index, regions)
         if not ev:
             return []
+        tracks = self.track_regions(scene_index, ev, sampled)
         if not control:
-            return self.track_regions(scene_index, ev, sampled)
-        others = sorted(self.all_objects(scene_index) - ev)
-        if len(others) < len(ev):
-            return []  # no same-size control in this video: the caller skips the item in both track modes
-        pick = set(rng.sample(others, len(ev)))
-        return self.track_regions(scene_index, pick, sampled)
+            return tracks
+        by_frame: dict[int, list[tuple[float, float, float, float]]] = defaultdict(list)
+        for t0, _t1, b in tracks:
+            by_frame[t0].append(b)
+        out: list[Region] = []
+        for t0, t1, box in tracks:
+            bw, bh = box[2] - box[0], box[3] - box[1]
+            best = None
+            for _ in range(30):
+                nx = rng.uniform(0.0, max(0.0, 1.0 - bw))
+                ny = rng.uniform(0.0, max(0.0, 1.0 - bh))
+                cand = (nx, ny, nx + bw, ny + bh)
+                overlap = max((_iou(cand, b) for b in by_frame[t0]), default=0.0)
+                if best is None or overlap < best[0]:
+                    best = (overlap, cand)
+                if overlap == 0.0:
+                    break
+            out.append((t0, t1, best[1]))
+        return out

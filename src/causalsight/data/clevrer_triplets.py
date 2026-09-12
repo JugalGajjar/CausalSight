@@ -87,7 +87,7 @@ class ChainBuilder:
             deps = tuple(sorted(self._landmark_deps(ex.steps, si, step_to_triplet)))
             step_to_triplet[si] = len(triplets)
             seen_qa[key] = len(triplets)
-            triplets.append(Triplet(question=q, answer=a, evidence=ev, depends_on=deps))
+            triplets.append(Triplet(question=q, answer=a, evidence=ev, depends_on=deps, role=landmarks[si]))
 
         meta = {
             "scene_index": self.s.scene_index,

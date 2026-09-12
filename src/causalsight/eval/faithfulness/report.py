@@ -73,7 +73,7 @@ def report(dir_: Path, tag: str) -> dict:
         return None if a is None else a - b
 
     for t, tids in sorted(by_type.items()):
-        acc = {k: sum(runs[k][i]["correct"] for i in tids) / len(tids) for k in runs}
+        acc = {k: sum(runs[k][i]["correct"] for i in tids) / len(tids) for k in main_keys}
         row = {"n": len(tids), "acc_plain": acc["plain"]}
         if "blind" in acc:
             row["acc_blind"] = acc["blind"]
@@ -114,9 +114,10 @@ def main() -> None:
             return f"[{v[0]:.2f},{v[1]:.2f}]"
         return f"{v:.3f}" if isinstance(v, float) else str(v if v is not None else "")
 
-    print(f"{'type':16s}" + "".join(f"{c:>14s}" for c in cols))
+    width = {c: max(14, len(c) + 2) for c in cols}
+    print(f"{'type':16s}" + "".join(f"{c:>{width[c]}s}" for c in cols))
     for t, row in rep.items():
-        print(f"{t:16s}" + "".join(f"{fmt(row.get(c)):>14s}" for c in cols))
+        print(f"{t:16s}" + "".join(f"{fmt(row.get(c)):>{width[c]}s}" for c in cols))
     (args.dir / f"{args.tag}_faithfulness.json").write_text(json.dumps(rep, indent=2))
     (args.dir / f"{args.tag}_faithfulness.md").write_text(
         "| type | " + " | ".join(cols) + " |\n|" + "---|" * (len(cols) + 1) + "\n"

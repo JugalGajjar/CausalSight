@@ -53,6 +53,7 @@ class Triplet:
     answer: str
     evidence: Evidence
     depends_on: tuple[int, ...] = ()
+    role: str | None = None  # generator landmark kind: resolve | enumerate | observe (None for model output)
 
 
 @dataclass
@@ -126,6 +127,7 @@ class TripletChain:
                     box=tuple(t["evidence"]["box"]),
                 ),
                 depends_on=tuple(t.get("depends_on", ())),
+                role=t.get("role"),
             )
             for t in d["triplets"]
         ]

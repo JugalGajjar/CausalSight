@@ -44,7 +44,8 @@ def test_track_masker_matches_object_and_control_picks_other(tmp_path):
     ev = tm.regions_for(7, regions, n_total=16, n_sampled=16, control=False, rng=random.Random(0))
     assert len(ev) == 16 and all(abs(r[2][0] - 2 / 40) < 1e-9 for r in ev)  # red cube on every sampled frame
     ctrl = tm.regions_for(7, regions, n_total=16, n_sampled=16, control=True, rng=random.Random(0))
-    assert len(ctrl) == 16 and all(abs(r[2][0] - 25 / 40) < 1e-9 for r in ctrl)  # the blue sphere instead
-    # both objects as evidence -> no same-size control -> empty (caller skips the item)
-    both = regions + [(3, 3, (25 / 40, 8 / 20, 35 / 40, 18 / 20))]
-    assert tm.regions_for(7, both, n_total=16, n_sampled=16, control=True, rng=random.Random(0)) == []
+    assert len(ctrl) == 16
+    for (t0, t1, b), (u0, u1, e) in zip(ctrl, ev):
+        assert (t0, t1) == (u0, u1)
+        assert abs((b[2] - b[0]) - (e[2] - e[0])) < 1e-9 and abs((b[3] - b[1]) - (e[3] - e[1])) < 1e-9  # same size
+        assert not (b[0] < e[2] and e[0] < b[2] and b[1] < e[3] and e[1] < b[3])  # no overlap with the evidence box
