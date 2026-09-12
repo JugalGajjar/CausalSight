@@ -211,8 +211,8 @@ class GRPOTrainer:
             per_tok = -(ratio * adv[s : s + micro].unsqueeze(1) - beta * kl)
             loss = ((per_tok * mask).sum(1) / mask.sum(1).clamp(min=1)).sum() / g
             loss.backward()
-            total_loss += loss.item()
-            total_kl += float((kl * mask).sum() / mask.sum().clamp(min=1))
+            total_loss += loss.detach().item()
+            total_kl += ((kl * mask).sum() / mask.sum().clamp(min=1)).detach().item()
         # the on-policy loss value is ~0 by construction (advantages are mean-centered); the gradient norm
         # is the informative number
         grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.get("max_grad_norm", 1.0))

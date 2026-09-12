@@ -5,7 +5,7 @@ prompt_style: plain               # <think>/<answer> only; no triplet format at 
 instr_in_user: true               # format instruction after the question (4/24 tagged vs 1/24 as system prompt)
 n_frames: 16
 group_size: 8
-micro_batch: 4                    # completions per forward/backward; lower if OOM
+micro_batch: 8                    # all 8 completions in one pass; pilot used 22 GB at 4, expect ~40 GB
 max_new_tokens: 256
 temperature: 1.0
 lr: 1.0e-5                        # LoRA; Video-R1 uses 1e-6 for full fine-tuning
