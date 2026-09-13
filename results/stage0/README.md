@@ -53,3 +53,23 @@ Final track results (chains with roles, size-matched random-position control, 93
 | counterfactual | 250 | 0.575 | 0.163 | 0.412 [0.28, 0.54] |
 
 This is the pre-RL reference row for Stage 0. The same six conditions are run on every trained checkpoint.
+
+
+## Stage 0 result: outcome-only GRPO, balanced mix (run 2, `grpo3b_bal_*`)
+
+Training: 1,500 GRPO steps on 1,500 CLEVRER train questions (375 per type), G=8, LoRA r=64, 4.1 h on
+an A100 80GB (`notes/2026-09-13-stage0-run1.md`). The checkpoint answers with bare letters/words (no tags).
+
+| type | plain base -> GRPO | blind base -> GRPO | blind gap base -> GRPO | track gap base -> GRPO |
+|---|---|---|---|---|
+| descriptive | 0.728 -> 0.780 | 0.156 -> 0.192 | 0.57 -> 0.59 [0.52,0.66] | 0.66 -> 0.69 [0.61,0.78] |
+| explanatory | 0.288 -> 0.808 | 0.116 -> 0.280 | 0.17 -> 0.53 [0.46,0.59] | 0.71 -> 0.69 [0.61,0.75] |
+| predictive | 0.660 -> 0.900 | 0.340 -> 0.468 | 0.32 -> 0.43 [0.36,0.50] | 0.33 -> 0.42 [0.35,0.49] |
+| counterfactual | 0.320 -> 0.500 | 0.176 -> 0.208 | 0.14 -> 0.29 [0.22,0.37] | 0.41 -> 0.58 [0.50,0.67] |
+
+Per-option: explanatory 0.937, predictive 0.900, counterfactual 0.806 (base 0.692 / 0.798 / 0.719).
+
+Reading: no shortcut collapse on the balanced mix. The accuracy gain is mostly video-dependent (blind
+gaps grow), and evidence dependence is maintained or increased (track gaps). Wu et al.'s degradation
+was observed with ~74% observational training questions; run 3 (`stage0_natural`, 72% descriptive)
+tests that setting on this trainer.

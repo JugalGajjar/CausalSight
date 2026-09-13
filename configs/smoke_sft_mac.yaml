@@ -1,0 +1,21 @@
+model: Qwen/Qwen2.5-VL-3B-Instruct
+data_file: sft_subset.jsonl
+n_frames: 4
+epochs: 1
+grad_accum: 2
+lr: 1.0e-4
+warmup: 1
+max_grad_norm: 1.0
+bridge_weight: 0.5
+bridge_prob: 1.0
+save_every: 2
+log_every: 1
+seed: 0
+dtype: float32
+attn: sdpa
+gradient_checkpointing: false
+lora:
+  r: 8
+  alpha: 16
+  dropout: 0.0
+  targets: [q_proj, v_proj]

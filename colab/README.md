@@ -31,6 +31,13 @@ nonzero on non-skipped steps (`loss` itself is ~0 by construction). `skipped` st
 reward variance; expect many early on for easy descriptive questions. If seconds/step exceeds ~16 on the
 A100, lower `micro_batch`, `max_new_tokens`, or `n_frames` in the config before launching the full run.
 
+## Stage 1: triplet-chain SFT with the bridge loss (~4 h)
+```python
+!mkdir -p /content/drive/MyDrive/causalsight/runs/stage1 && cd /content/CausalSight && git pull && nohup cs-sft --config configs/stage1_sft.yaml --data /content/data/train --out /content/drive/MyDrive/causalsight/runs/stage1 > /content/drive/MyDrive/causalsight/runs/stage1/console.txt 2>&1 &
+```
+Watch `nll` fall (~1.4 -> well under 0.5) and `p_ans_corrupted` fall from ~0.9: the answer should stop being
+recoverable from a broken chain. `--resume` continues after a disconnect. Evaluate with `--instr chain --max-new-tokens 512`.
+
 ## After training, on the Mac
 Download `runs/stage0/adapter/` from Drive, then evaluate the merged model with the six Stage 0 conditions
 (`cs-eval --model <adapter dir>` support is in the backend: pass the adapter directory and the base model

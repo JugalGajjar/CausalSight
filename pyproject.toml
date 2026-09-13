@@ -44,6 +44,7 @@ cs-export = "causalsight.data.export_rl:main"
 cs-frames = "causalsight.train.frames:main"
 cs-grpo = "causalsight.train.grpo:main"
 cs-trainlog = "causalsight.train.trainlog:main"
+cs-sft = "causalsight.train.sft:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
