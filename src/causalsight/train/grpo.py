@@ -267,10 +267,13 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--steps", type=int, default=None, help="override config steps (smoke tests)")
+    ap.add_argument("--data-file", type=Path, default=None, help="override config data_file (absolute path or relative to --data)")
     a = ap.parse_args()
     cfg = yaml.safe_load(a.config.read_text())
     if a.steps:
         cfg["steps"] = a.steps
+    if a.data_file:
+        cfg["data_file"] = str(a.data_file)
     (a.out).mkdir(parents=True, exist_ok=True)
     (a.out / "config.yaml").write_text(yaml.safe_dump(cfg))
     GRPOTrainer(cfg, a.data, a.out, a.resume).train()
