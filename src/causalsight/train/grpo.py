@@ -231,9 +231,15 @@ class GRPOTrainer:
                 completions[i, ends[0, 0] + 1 :] = pad
         rewards = torch.zeros(g)
         parts = {name: [] for name, _, _ in self.rewards}
+        nec_inputs = inputs
+        nf = self.cfg.get("necessity_frames")
+        if nf and nf < len(frames) and any(name == "necessity" for name, _, _ in self.rewards):
+            # cheaper verifier context: a uniform subset of the frames (the verdict rests on the chain text)
+            idx = [round(i * (len(frames) - 1) / (nf - 1)) for i in range(nf)]
+            nec_inputs = self._inputs(rec, [frames[i] for i in idx])
         for i, t in enumerate(texts):
             for name, fn, w in self.rewards:
-                v = self._necessity(inputs, rec, t) if name == "necessity" else float(fn(t, rec))
+                v = self._necessity(nec_inputs, rec, t) if name == "necessity" else float(fn(t, rec))
                 parts[name].append(v)
                 rewards[i] += w * v
         stats_common = {

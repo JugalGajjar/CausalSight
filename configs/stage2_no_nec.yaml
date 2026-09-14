@@ -6,7 +6,7 @@ prompt_style: chain
 instr_in_user: true
 n_frames: 16
 group_size: 8
-micro_batch: 4                    # chain completions are ~150-400 tokens; 8 may fit, pilot decides
+micro_batch: 8                    # one policy pass per step; pilot ran at 4, drop back if OOM
 max_new_tokens: 640                # SFT chains: explanatory p90 468, max 549 tokens
 temperature: 1.0
 lr: 1.0e-5
@@ -31,6 +31,7 @@ rewards:                          # R = w_o R_out + w_f R_fmt + w_g R_ground + w
   grounding: 0.5
 
   process: 0.5
+necessity_frames: 8               # verifier context uses 8 of the 16 frames (halves its cost)
 necessity:
   delta: 0.1                      # step is necessary if removing it drops p(gold) by more than delta
   eps: 0.02                       # step is padding if the drop is <= eps

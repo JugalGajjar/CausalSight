@@ -30,6 +30,7 @@ rewards:
   grounding: 0.5
   necessity: 0.5
   process: 0.5
+necessity_frames: 2
 necessity:
   delta: 0.1
   eps: 0.02

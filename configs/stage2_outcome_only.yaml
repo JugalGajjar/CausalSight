@@ -1,4 +1,4 @@
-# Stage 2: CSR policy optimization from the Stage 1 SFT checkpoint. Single A100 80GB; pilot first.
+# Ablation: chain GRPO with outcome + format only (no grounding, process, or necessity rewards). Single A100 80GB; pilot first.
 model: Qwen/Qwen2.5-VL-3B-Instruct
 init_adapter: /content/drive/MyDrive/causalsight/runs/stage1/adapter   # merged in; reference = SFT model
 data_file: /content/CausalSight/data/subsets/rl_balanced_1500_chains.jsonl
@@ -13,7 +13,7 @@ lr: 1.0e-5
 kl_beta: 0.04
 kl_log_ratio_clip: 5.0
 max_grad_norm: 1.0
-steps: 1000                       # ~55 s/step expected -> ~15 h
+steps: 1000
 save_every: 50
 log_every: 1
 seed: 0
@@ -28,9 +28,9 @@ lora:
 rewards:                          # R = w_o R_out + w_f R_fmt + w_g R_ground + w_n R_nec + w_p R_proc
   outcome: 1.0
   format_chain: 0.5
-  grounding: 0.5
-  necessity: 0.5
-  process: 0.5
+
+
+
 necessity_frames: 8               # verifier context uses 8 of the 16 frames (halves its cost)
 necessity:
   delta: 0.1                      # step is necessary if removing it drops p(gold) by more than delta
