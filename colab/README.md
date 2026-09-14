@@ -11,6 +11,18 @@ cd data/frames && zip -qr train.zip train                    # ~600 MB
 ```
 Upload `train.zip` to Drive under `MyDrive/causalsight/`.
 
+## Running long jobs without blocking the notebook
+A `!nohup ... &` cell can still block in Colab. Use this helper instead (define once per session):
+```python
+import subprocess
+def bg(cmd, log):
+    f = open(log, "a")
+    p = subprocess.Popen(cmd, shell=True, stdout=f, stderr=subprocess.STDOUT, cwd="/content/CausalSight", start_new_session=True)
+    print("started pid", p.pid, "->", log)
+```
+Then `bg("cs-grpo --config ... --out <dir>", "<dir>/console.txt")` returns immediately; check progress with
+`!tail -n 2 <dir>/log.jsonl`. The process survives closing the tab as long as the runtime stays alive.
+
 ## Each Colab session
 ```python
 from google.colab import drive; drive.mount('/content/drive')
