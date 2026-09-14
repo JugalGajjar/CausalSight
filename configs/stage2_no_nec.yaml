@@ -1,7 +1,7 @@
 # Ablation: Stage 2 without the necessity reward (everything else identical). Single A100 80GB; pilot first.
 model: Qwen/Qwen2.5-VL-3B-Instruct
 init_adapter: /content/drive/MyDrive/causalsight/runs/stage1/adapter   # merged in; reference = SFT model
-data_file: /content/CausalSight/data/subsets/rl_balanced_1500_chains.jsonl
+data_file: /content/CausalSight/data/subsets/rl_balanced_1500_options.jsonl   # per-option yes/no records with their own GT chain
 prompt_style: chain
 instr_in_user: true
 n_frames: 16

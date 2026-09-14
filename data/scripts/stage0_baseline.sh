@@ -12,7 +12,15 @@ TAG="${3:-qwen3b}"
 INSTR="${4:-none}"
 MAXTOK="${5:-64}"
 CHAINS=data/triplets/clevrer_validation.jsonl
-COMMON=(--bench clevrer --split validation --chains "$CHAINS" --per-type "$PER_TYPE" --seed 0 --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK")
+# Optional env: MC=option (per-option yes/no items, chain models), EVALPACK=<dir> (frames-dir + root + chains from an eval pack)
+MC="${MC:-multi}"
+if [ -n "${EVALPACK:-}" ]; then
+  CHAINS="$EVALPACK/chains.jsonl"
+  EXTRA=(--root "$EVALPACK" --frames-dir "$EVALPACK" --proposals-root "$EVALPACK/derender_proposals")
+else
+  EXTRA=()
+fi
+COMMON=(--bench clevrer --split validation --chains "$CHAINS" --per-type "$PER_TYPE" --seed 0 --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK" --mc "$MC" "${EXTRA[@]}")
 mkdir -p results/stage0
 cs-eval "${COMMON[@]}"                 --out "results/stage0/${TAG}_plain.jsonl"
 cs-eval "${COMMON[@]}" --blind         --out "results/stage0/${TAG}_blind.jsonl"

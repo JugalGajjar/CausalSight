@@ -46,6 +46,10 @@ class Evidence:
         """Spatiotemporal IoU used by R_ground and R_proc: temporal-IoU x spatial-IoU."""
         return self.temporal_iou(other) * self.spatial_iou(other)
 
+    def temporal_offset(self, other: Evidence) -> int:
+        """Frames between the two spans (0 if they overlap)."""
+        return max(0, other.t_start - self.t_end, self.t_start - other.t_end)
+
 
 @dataclass(frozen=True)
 class Triplet:

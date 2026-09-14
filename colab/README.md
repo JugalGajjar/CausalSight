@@ -47,6 +47,15 @@ Pilot: check seconds/step and GPU memory (`micro_batch` 4 with 640-token chains;
 Then the full run with `--resume` and nohup as for Stage 0. Ablation without the necessity reward:
 `configs/stage2_no_nec.yaml` into `runs/stage2_no_nec`. Evaluate with `--instr chain --max-new-tokens 640`.
 
+## Evaluating on the GPU (any checkpoint, ~1 h for six conditions)
+Upload `data/frames/evalpack.zip` (built once with `cs-frames --eval-pack ...`, ~220 MB) to Drive, then:
+```python
+!cd /content/data && unzip -q /content/drive/MyDrive/causalsight/evalpack.zip
+!cd /content/CausalSight && EVALPACK=/content/data/evalpack MC=option bash data/scripts/stage0_baseline.sh /content/drive/MyDrive/causalsight/runs/stage1/adapter 250 sft3b chain 640
+```
+Results land in `/content/CausalSight/results/stage0/`; copy the `sft3b_*` files to Drive or download them.
+Chain models (SFT, CSR) use `MC=option chain 640`; bare-answer models (base, Stage 0 GRPO) use `MC=multi plain 384`.
+
 ## After training, on the Mac
 Download `runs/stage0/adapter/` from Drive, then evaluate the merged model with the six Stage 0 conditions
 (`cs-eval --model <adapter dir>` support is in the backend: pass the adapter directory and the base model

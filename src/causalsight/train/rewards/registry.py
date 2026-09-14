@@ -22,7 +22,7 @@ def outcome(text: str, rec: dict) -> float:
     if rec.get("problem_type") == "multiple choice":
         return float(parse_letters(ans, len(rec.get("options", []))) == rec["gold"])
     pred = normalize_short(ans)
-    if rec.get("subtype") == "exist" and pred.isdigit():
+    if (rec.get("subtype") == "exist" or rec["gold"] in ("yes", "no")) and pred.isdigit():
         pred = "no" if pred == "0" else "yes"
     return float(pred == rec["gold"])
 

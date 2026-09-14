@@ -109,9 +109,63 @@ def test_chain_metrics_grounding():
     from causalsight.eval.harness import chain_metrics
 
     raw = "<think>\n[1] Q: a | A: b | E: t=10-12 box=(0.1,0.1,0.3,0.3) | deps=\n[2] Q: c | A: d | E: t=50-50 box=(0.6,0.6,0.9,0.9) | deps=1\n</think>\n<answer>x</answer>"
-    gt = [(10, 12, (0.1, 0.1, 0.3, 0.3)), (90, 90, (0.0, 0.0, 0.2, 0.2))]
+    gt = [(14, 14, (0.1, 0.1, 0.3, 0.3)), (90, 90, (0.0, 0.0, 0.2, 0.2))]
     m = chain_metrics(raw, gt)
     assert m["chain_ok"] == 1 and m["n_steps"] == 2
-    assert abs(m["ground_prec"] - 0.5) < 1e-9  # step 1 exact match (1.0), step 2 matches nothing (0.0)
-    assert abs(m["ground_recall"] - 0.5) < 1e-9  # one of two GT regions recovered
+    assert m["ground_st"] == 0.0  # strict: step 1 is 2 frames off the GT span, so temporal IoU is 0
+    assert abs(m["ground_spatial"] - 0.5) < 1e-9  # tolerant: step 1 matches spatially within 8 frames, step 2 nothing
+    assert abs(m["ground_recall"] - 0.5) < 1e-9
+    assert abs(m["t_offset"] - (2 + 36) / 2) < 1e-9  # step 2 at frame 50 is 36 frames from the GT span at 14
     assert chain_metrics("no chain", gt) == {"chain_ok": 0, "n_steps": 0}
+
+
+def test_frames_dir_mode_reads_jpgs(tmp_path, monkeypatch):
+    """--frames-dir must feed pre-extracted frames to a real backend without touching video files."""
+    from PIL import Image
+
+    import causalsight.eval.harness as H
+    from causalsight.models.base import VLMBackend
+
+    root = fake_clevrer(tmp_path)
+    fdir = root / "frames" / "video_10000"
+    fdir.mkdir(parents=True)
+    for i in range(4):
+        Image.new("RGB", (32, 24), (i * 40, 0, 0)).save(fdir / f"f{i:02d}.jpg")
+
+    class Rec(VLMBackend):
+        name = "rec"
+
+        def __init__(self, **_):
+            self.seen = []
+
+        def generate(self, frames, prompt, max_new_tokens=64):
+            self.seen.append(len(frames))
+            return "2"
+
+    inst = {}
+    monkeypatch.setattr(H, "load_backend", lambda m, **kw: inst.setdefault("b", Rec()))
+    H.run("rec", "clevrer", "validation", root, None, None, False, 4, frames_dir=root)
+    assert inst["b"].seen and all(n == 4 for n in inst["b"].seen)
+
+
+def test_per_option_mode_items_and_summary(tmp_path):
+    from causalsight.eval.benchmarks.clevrer import ClevrerBenchmark
+
+    b = ClevrerBenchmark(fake_clevrer(tmp_path), mc_mode="option")
+    items = list(b.items("validation"))
+    assert [i.question_type for i in items] == ["descriptive", "predictive", "predictive"]
+    assert items[1].prompt.endswith("Is this option correct? Answer yes or no.") and items[1].gold == "yes" and items[2].gold == "no"
+    rows = []
+    for it, pred in zip(items, ["2", "yes", "1"]):  # "1" on a yes/no option maps to yes -> wrong for option B
+        rows.append({"question_type": it.question_type, **it.meta, **b.score(it, pred)})
+    s = b.summarize(rows)
+    assert s["predictive"]["per_option"] == 0.5 and s["predictive"]["per_question"] == 0.0 and s["predictive"]["n"] == 1
+
+
+def test_stratified_sample_keeps_options_together():
+    from causalsight.eval.benchmarks import Item
+    from causalsight.eval.harness import stratified_sample
+
+    items = [Item(f"q{i}_{o}", "predictive", Path("x"), "", "", meta={"qid": f"q{i}"}) for i in range(6) for o in range(3)]
+    s = stratified_sample(items, 2, seed=0, key=lambda it: it.meta["qid"])
+    assert len(s) == 6 and len({it.meta["qid"] for it in s}) == 2

@@ -88,8 +88,42 @@ def run(rl: Path | None, per_type: int, sft: Path | None, sft_per_type: int, out
     return manifest
 
 
+def build_eval_pack(root: Path, split: str, chains: Path, per_type: int, seed: int, out: Path, n_frames: int, max_side: int, workers: int) -> dict:
+    """Everything the harness needs to evaluate on a GPU box without videos: the questions file, frames for
+    the stratified evaluation subset's videos, their derender proposals (track masking), and the chains
+    file (evidence regions). Selection reproduces `cs-eval --chains ... --per-type --seed`."""
+    import shutil
+
+    from causalsight.eval.benchmarks.clevrer import ClevrerBenchmark
+    from causalsight.eval.harness import stratified_sample
+    from causalsight.eval.masking import EvidenceIndex
+
+    idx = EvidenceIndex.from_chains(chains)
+    items = [it for it in ClevrerBenchmark(root).items(split) if idx.get(it.id)]
+    items = stratified_sample(items, per_type, seed)
+    videos = sorted({str(it.video_path) for it in items})
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "questions").mkdir(exist_ok=True)
+    shutil.copy(root / "questions" / f"{split}.json", out / "questions" / f"{split}.json")
+    shutil.copy(chains, out / "chains.jsonl")
+    (out / "derender_proposals").mkdir(exist_ok=True)
+    for v in videos:
+        scene = int(Path(v).stem.split("_")[1])
+        shutil.copy(root / "derender_proposals" / f"proposal_{scene:05d}.json", out / "derender_proposals" / f"proposal_{scene:05d}.json")
+    jobs = [(v, str(out / "frames" / Path(v).stem), n_frames, max_side) for v in videos]
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(_extract, jobs))
+    manifest = {"split": split, "per_type": per_type, "seed": seed, "items": len(items), "videos": len(videos), "n_frames": n_frames}
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    return manifest
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--eval-pack", action="store_true", help="build an evaluation pack instead of training frames")
+    ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
+    ap.add_argument("--split", default="validation")
+    ap.add_argument("--chains", type=Path, default=None)
     ap.add_argument("--rl", type=Path, default=None)
     ap.add_argument("--per-type", type=int, default=375)
     ap.add_argument("--sft", type=Path, default=None)
@@ -100,6 +134,11 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args()
+    if a.eval_pack:
+        m = build_eval_pack(a.root, a.split, a.chains, a.per_type, a.seed, a.out, a.n_frames, a.max_side, a.workers)
+        print(json.dumps(m, indent=2))
+        print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+        return
     m = run(a.rl, a.per_type, a.sft, a.sft_per_type, a.out, a.n_frames, a.max_side, a.seed, a.workers)
     print(json.dumps(m, indent=2))
     print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")

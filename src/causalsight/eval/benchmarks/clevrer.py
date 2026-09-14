@@ -25,6 +25,7 @@ MC_PROMPT = (
     "If none are correct, answer 'none'."
 )
 MC_TYPES = ("explanatory", "predictive", "counterfactual")
+OPTION_PROMPT = "{q}\nOption {letter}: {choice}\nIs this option correct? Answer yes or no."
 
 
 def find_video(root: Path, split: str, scene_index: int) -> Path:
@@ -35,8 +36,11 @@ def find_video(root: Path, split: str, scene_index: int) -> Path:
 class ClevrerBenchmark(Benchmark):
     name = "clevrer"
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, mc_mode: str = "multi") -> None:
+        """mc_mode: 'multi' lists all options and asks for letters; 'option' yields one yes/no item per
+        option (the SFT/RL prompt for chain models; official CLEVRER per-option scoring)."""
         self.root = root
+        self.mc_mode = mc_mode
 
     def items(self, split: str = "validation", limit: int | None = None) -> Iterator[Item]:
         videos = json.loads((self.root / "questions" / f"{split}.json").read_text())
@@ -49,6 +53,10 @@ class ClevrerBenchmark(Benchmark):
                 if t == "descriptive":
                     st = q.get("question_subtype", "query_color")
                     yield Item(qid, t, vp, DESCRIPTIVE_PROMPT.get(st, DESCRIPTIVE_PROMPT["query_color"]).format(q=q["question"]), normalize_short(str(q["answer"])), meta={"subtype": st})
+                elif self.mc_mode == "option":
+                    for i, c in enumerate(q["choices"]):
+                        gold = "yes" if c["answer"] == "correct" else "no"
+                        yield Item(f"{qid}_{i}", t, vp, OPTION_PROMPT.format(q=q["question"], letter=LETTERS[i], choice=c["choice"]), gold, meta={"qid": qid, "option": i, "per_option": True})
                 else:
                     opts = [c["choice"] for c in q["choices"]]
                     gold = "".join(LETTERS[i] for i, c in enumerate(q["choices"]) if c["answer"] == "correct")
@@ -59,10 +67,10 @@ class ClevrerBenchmark(Benchmark):
                     return
 
     def score(self, item: Item, prediction: str) -> dict:
-        if item.question_type == "descriptive":
+        if item.question_type == "descriptive" or item.meta.get("per_option"):
             pred = normalize_short(prediction)
-            if item.meta.get("subtype") == "exist" and pred.isdigit():
-                pred = "no" if pred == "0" else "yes"  # models answer yes/no questions with counts
+            if (item.meta.get("subtype") == "exist" or item.meta.get("per_option")) and pred.isdigit():
+                pred = "no" if pred == "0" else "yes"
             return {"pred": pred, "correct": int(pred == item.gold)}
         pred = parse_letters(prediction, len(item.options))
         per_option = [int((L in pred) == (L in item.gold)) for L in LETTERS[: len(item.options)]]
@@ -75,11 +83,19 @@ class ClevrerBenchmark(Benchmark):
             rs = [r for r in rows if r["question_type"] == t]
             if not rs:
                 continue
-            d = {"n": len(rs), "per_question": sum(r["correct"] for r in rs) / len(rs)}
-            if t in MC_TYPES:
-                d["per_option"] = sum(r["option_correct"] for r in rs) / sum(r["option_total"] for r in rs)
+            if rs[0].get("per_option"):
+                # per-option rows: per_option = row accuracy; per_question = all options of a question correct
+                by_q: dict[str, list[int]] = {}
+                for r in rs:
+                    by_q.setdefault(r["qid"], []).append(r["correct"])
+                d = {"n": len(by_q), "n_options": len(rs), "per_option": sum(r["correct"] for r in rs) / len(rs), "per_question": sum(all(v) for v in by_q.values()) / len(by_q)}
+            else:
+                d = {"n": len(rs), "per_question": sum(r["correct"] for r in rs) / len(rs)}
+                if t in MC_TYPES:
+                    d["per_option"] = sum(r["option_correct"] for r in rs) / sum(r["option_total"] for r in rs)
             out[t] = d
-        inferential = [r for r in rows if r["question_type"] in MC_TYPES]
-        if inferential:
-            out["inferential(per_question)"] = {"n": len(inferential), "per_question": sum(r["correct"] for r in inferential) / len(inferential)}
+        inf = [t for t in MC_TYPES if t in out]
+        if inf:
+            tot = sum(out[t]["n"] for t in inf)
+            out["inferential(per_question)"] = {"n": tot, "per_question": sum(out[t]["per_question"] * out[t]["n"] for t in inf) / tot}
         return out

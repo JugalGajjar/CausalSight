@@ -127,18 +127,56 @@ def attach_chains(rl_subset: Path, chains: Path, out: Path) -> Counter:
     return stats
 
 
+def to_options(rl_chains: Path, out: Path, per_type: int, seed: int) -> Counter:
+    """Per-option RL records for chain models: each MC question becomes one yes/no record per option with
+    the SFT prompt and that option's own GT chain; descriptive records pass through. Then a stratified
+    sample of `per_type` records per question type (MC types balanced yes/no)."""
+    import random
+
+    from causalsight.eval.benchmarks.clevrer import OPTION_PROMPT
+
+    rng = random.Random(seed)
+    recs = [json.loads(line) for line in rl_chains.open()]
+    pool: dict[tuple, list] = {}
+    for r in recs:
+        if r["question_type"] == "descriptive":
+            pool.setdefault(("descriptive", ""), []).append(r)
+            continue
+        q_text = r["problem"].split("\n")[0]
+        for i, opt in enumerate(r["options"]):
+            letter, choice = opt.split(". ", 1)
+            gold = "yes" if letter in r["gold"] else "no"
+            chains = [c for c in r["gt_chains"] if c.get("choice_id") == i]
+            rec = {**r, "problem_id": f"{r['problem_id']}_{i}", "problem": OPTION_PROMPT.format(q=q_text, letter=letter, choice=choice), "problem_type": "free-form", "options": [], "gold": gold, "solution": f"<answer>{gold}</answer>", "gt_chains": chains}
+            pool.setdefault((r["question_type"], gold), []).append(rec)
+    out_recs = []
+    for (t, g), rs in sorted(pool.items()):
+        k = per_type if t == "descriptive" else per_type // 2
+        out_recs.extend(rng.sample(rs, min(k, len(rs))))
+    rng.shuffle(out_recs)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w") as f:
+        for r in out_recs:
+            f.write(json.dumps(r) + "\n")
+    return Counter((r["question_type"], r["gold"]) for r in out_recs)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["rl", "sft", "attach-chains"])
+    ap.add_argument("mode", choices=["rl", "sft", "attach-chains", "to-options"])
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="train")
     ap.add_argument("--chains", type=Path, default=None)
     ap.add_argument("--n-videos", type=int, default=None)
     ap.add_argument("--limit", type=int, default=None)
     ap.add_argument("--rl-subset", type=Path, default=None)
+    ap.add_argument("--per-type", type=int, default=375)
+    ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
-    if args.mode == "attach-chains":
+    if args.mode == "to-options":
+        stats = to_options(args.rl_subset, args.out, args.per_type, args.seed)
+    elif args.mode == "attach-chains":
         if not (args.rl_subset and args.chains):
             raise SystemExit("--rl-subset and --chains required")
         stats = attach_chains(args.rl_subset, args.chains, args.out)
