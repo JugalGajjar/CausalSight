@@ -24,8 +24,10 @@ from pathlib import Path
 
 import yaml
 
+from causalsight.data.schema import TripletChain
 from causalsight.train.data import load_frames, load_records
-from causalsight.train.format import SYSTEM_PROMPT
+from causalsight.train.format import SYSTEM_PROMPT, format_step, parse_chain
+from causalsight.train.rewards.necessity import score_from_deltas
 from causalsight.train.rewards.registry import REWARDS
 
 PLAIN_SYSTEM = (
@@ -61,6 +63,13 @@ class GRPOTrainer:
         self.processor = AutoProcessor.from_pretrained(cfg["model"])
         self.processor.tokenizer.padding_side = "left"
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(cfg["model"], torch_dtype=self.dtype, attn_implementation=cfg.get("attn", "sdpa"))
+        if cfg.get("init_adapter"):
+            # Stage 2 starts from the Stage 1 SFT adapter: merge it into the weights, so the reference
+            # model (RL adapter disabled) *is* the SFT model, which also serves as the necessity verifier
+            from peft import PeftModel
+
+            model = PeftModel.from_pretrained(model, cfg["init_adapter"]).merge_and_unload()
+            print(f"merged init adapter {cfg['init_adapter']}")
         if cfg.get("gradient_checkpointing", True):
             model.gradient_checkpointing_enable()
             model.enable_input_require_grads()
@@ -73,7 +82,8 @@ class GRPOTrainer:
         self.opt = torch.optim.AdamW([p for p in self.model.parameters() if p.requires_grad], lr=cfg["lr"], weight_decay=0.0)
         self.records = load_records(data_root / cfg["data_file"])
         self.data_root = data_root
-        self.rewards = [(name, REWARDS[name], float(w)) for name, w in cfg["rewards"].items()]
+        self.rewards = [(name, REWARDS.get(name), float(w)) for name, w in cfg["rewards"].items()]
+        self.nec_cfg = cfg.get("necessity", {"delta": 0.1, "eps": 0.02, "gamma": 0.5})
         self.kl_clip = float(cfg.get("kl_log_ratio_clip", 5.0))
         self.rng = random.Random(cfg.get("seed", 0))
         self.order = list(range(len(self.records)))
@@ -160,6 +170,49 @@ class GRPOTrainer:
         tok_lp = lp.gather(-1, completions.unsqueeze(-1)).squeeze(-1)
         return tok_lp, comp_mask
 
+    def _gold_logprob(self, inputs, chain_texts: list[str], gold: str) -> list[float]:
+        """log p(gold answer | prompt, chain) under the reference model, for each chain text, in one
+        batched teacher-forced forward (video inputs repeated per variant)."""
+        import torch
+
+        tok = self.processor.tokenizer
+        tok.padding_side = "right"
+        heads = [f"<think>\n{c}\n</think>\n<answer>" for c in chain_texts]
+        tail = f"{gold}</answer>"
+        seqs = [tok(h + tail, add_special_tokens=False)["input_ids"] for h in heads]
+        head_lens = [len(tok(h, add_special_tokens=False)["input_ids"]) for h in heads]
+        gold_len = len(tok(tail, add_special_tokens=False)["input_ids"])
+        pad = tok.pad_token_id
+        T = max(len(x) for x in seqs)
+        comp = torch.full((len(seqs), T), pad, dtype=torch.long, device=self.device)
+        for i, x in enumerate(seqs):
+            comp[i, : len(x)] = torch.tensor(x, device=self.device)
+        tok.padding_side = "left"
+        lp, _mask = self._completion_logprobs(inputs, comp, use_adapter=False)
+        out = []
+        for i in range(len(seqs)):
+            a0 = head_lens[i]
+            out.append(float(lp[i, a0 : a0 + gold_len].sum()))
+        return out
+
+    def _necessity(self, inputs, rec: dict, text: str) -> float:
+        """R_nec: fraction of steps whose removal (with their dependency closure) lowers p(gold) by more
+        than delta, minus gamma x fraction of padding steps (drop <= eps). Verifier = reference model."""
+        import math as _m
+
+        p = parse_chain(text)
+        if p.chain is None:
+            return 0.0
+        chain: TripletChain = p.chain
+        variants = ["\n".join(format_step(i, t) for i, t in enumerate(chain.triplets))]
+        for i in range(len(chain.triplets)):
+            sub = chain.without_step(i)
+            variants.append("\n".join(format_step(j, t) for j, t in enumerate(sub.triplets)) if sub.triplets else "")
+        lps = self._gold_logprob(inputs, variants, rec["gold"])
+        p_full = _m.exp(lps[0])
+        deltas = [p_full - _m.exp(lp) for lp in lps[1:]]
+        return score_from_deltas(deltas, self.nec_cfg["delta"], self.nec_cfg["eps"], self.nec_cfg["gamma"])
+
     def train_step(self, rec: dict) -> dict:
         import torch
 
@@ -180,7 +233,7 @@ class GRPOTrainer:
         parts = {name: [] for name, _, _ in self.rewards}
         for i, t in enumerate(texts):
             for name, fn, w in self.rewards:
-                v = float(fn(t, rec))
+                v = self._necessity(inputs, rec, t) if name == "necessity" else float(fn(t, rec))
                 parts[name].append(v)
                 rewards[i] += w * v
         stats_common = {

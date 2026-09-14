@@ -102,17 +102,47 @@ def export_sft(root: Path, split: str, chains: Path, out: Path, limit: int | Non
     return stats
 
 
+def attach_chains(rl_subset: Path, chains: Path, out: Path) -> Counter:
+    """Add `gt_chains` (list of generated chain dicts for the question; one per option for MC) to each
+    RL record, for the Stage 2 grounding and process rewards. Records without chains keep an empty list."""
+    want: dict[str, list] = {}
+    recs = [json.loads(line) for line in rl_subset.open()]
+    for r in recs:
+        want[r["problem_id"]] = []
+    with chains.open() as f:
+        for line in f:
+            c = json.loads(line)
+            key = f"{c['meta']['scene_index']}_{c['meta']['question_id']}"
+            if key in want:
+                slim = {"question_type": c["question_type"], "final_answer": c["final_answer"], "choice_id": c["meta"].get("choice_id"), "triplets": c["triplets"]}
+                want[key].append(slim)
+    stats = Counter()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w") as f:
+        for r in recs:
+            r = dict(r)
+            r["gt_chains"] = want[r["problem_id"]]
+            stats["with_chains" if r["gt_chains"] else "without"] += 1
+            f.write(json.dumps(r) + "\n")
+    return stats
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["rl", "sft"])
+    ap.add_argument("mode", choices=["rl", "sft", "attach-chains"])
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="train")
     ap.add_argument("--chains", type=Path, default=None)
     ap.add_argument("--n-videos", type=int, default=None)
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--rl-subset", type=Path, default=None)
     ap.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
-    if args.mode == "rl":
+    if args.mode == "attach-chains":
+        if not (args.rl_subset and args.chains):
+            raise SystemExit("--rl-subset and --chains required")
+        stats = attach_chains(args.rl_subset, args.chains, args.out)
+    elif args.mode == "rl":
         stats = export_rl(args.root, args.split, args.out, args.n_videos)
     else:
         if not args.chains:

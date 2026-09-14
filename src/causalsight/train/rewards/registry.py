@@ -48,4 +48,14 @@ def format_chain(text: str, rec: dict) -> float:
     return 0.2 if p.has_tags and p.answer is not None else 0.0
 
 
-REWARDS = {"outcome": outcome, "outcome_lenient": outcome_lenient, "format": format_tags, "format_chain": format_chain}
+from causalsight.train.rewards.chain_rewards import grounding, process
+
+REWARDS = {
+    "outcome": outcome,
+    "outcome_lenient": outcome_lenient,
+    "format": format_tags,
+    "format_chain": format_chain,
+    "grounding": grounding,
+    "process": process,
+    "necessity": None,  # computed inside the trainer (needs the reference model); see GRPOTrainer._necessity
+}

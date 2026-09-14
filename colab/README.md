@@ -38,6 +38,15 @@ A100, lower `micro_batch`, `max_new_tokens`, or `n_frames` in the config before 
 Watch `nll` fall (~1.4 -> well under 0.5) and `p_ans_corrupted` fall from ~0.9: the answer should stop being
 recoverable from a broken chain. `--resume` continues after a disconnect. Evaluate with `--instr chain --max-new-tokens 512`.
 
+## Stage 2: CSR policy optimization from the SFT checkpoint (pilot, then ~1,000 steps)
+The config points at the Stage 1 adapter on Drive and the chain-annotated subset in the repo.
+```python
+!mkdir -p /content/drive/MyDrive/causalsight/runs/stage2 && cd /content/CausalSight && git pull && cs-grpo --config configs/stage2_csr.yaml --data /content/data/train --out /content/drive/MyDrive/causalsight/runs/stage2 --steps 20
+```
+Pilot: check seconds/step and GPU memory (`micro_batch` 4 with 640-token chains; raise to 8 if memory allows).
+Then the full run with `--resume` and nohup as for Stage 0. Ablation without the necessity reward:
+`configs/stage2_no_nec.yaml` into `runs/stage2_no_nec`. Evaluate with `--instr chain --max-new-tokens 640`.
+
 ## After training, on the Mac
 Download `runs/stage0/adapter/` from Drive, then evaluate the merged model with the six Stage 0 conditions
 (`cs-eval --model <adapter dir>` support is in the backend: pass the adapter directory and the base model

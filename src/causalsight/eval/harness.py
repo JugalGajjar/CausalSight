@@ -98,6 +98,8 @@ def run(
     rows: list[dict] = []
     frame_cache: dict[Path, list] = {}
     t0 = time.time()
+    if out:
+        out.parent.mkdir(parents=True, exist_ok=True)
     fout = out.open("w") if out else None
     items = list(benchmark.items(split, None if per_type else limit))
     if evidence is not None:
