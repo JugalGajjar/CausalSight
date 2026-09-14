@@ -73,3 +73,32 @@ Reading: no shortcut collapse on the balanced mix. The accuracy gain is mostly v
 gaps grow), and evidence dependence is maintained or increased (track gaps). Wu et al.'s degradation
 was observed with ~74% observational training questions; run 3 (`stage0_natural`, 72% descriptive)
 tests that setting on this trainer.
+
+
+## Stage 0 result: outcome-only GRPO, natural mix (run 3, `grpo3b_nat_*`)
+
+Training: 1,500 steps on `data/subsets/rl_natural_1500.jsonl` (72% descriptive, CLEVRER's own mix), same
+trainer and config as run 2, 3.8 h.
+
+| type | plain base -> nat | blind gap base -> nat | ES gap base -> nat | track gap base -> nat |
+|---|---|---|---|---|
+| descriptive | 0.728 -> 0.788 | 0.57 -> 0.60 | -0.01 -> 0.02 | 0.66 -> 0.68 |
+| explanatory | 0.288 -> 0.796 | 0.17 -> 0.62 | 0.17 -> 0.20 | 0.71 -> 0.77 |
+| predictive | 0.660 -> 0.860 | 0.32 -> 0.38 | 0.07 -> 0.07 | 0.33 -> 0.46 |
+| counterfactual | 0.320 -> 0.544 | 0.14 -> 0.35 | 0.11 -> 0.11 | 0.41 -> 0.59 |
+
+Per-option: explanatory 0.936, predictive 0.872, counterfactual 0.819.
+
+## Stage 0 verdict
+
+The shortcut collapse reported by Wu et al. (CVPR 2026) for GRPO on Qwen2.5-VL-3B does not reproduce
+on this setup under either data mix. Both GRPO checkpoints are more accurate on every question type,
+more video-dependent (blind gaps grow on every type), and at least as evidence-dependent (track gaps
+hold or grow). Candidate reasons, not tested: LoRA + KL-to-base is a stronger regularizer than their
+full fine-tune; their baseline starts from VideoRFT-3B rather than the base model; different
+"inferential" split and per-option scoring; their evaluation prompt. Per the proposal's Stage 0 gate,
+the project's framing changes from "reverse the collapse" to "does grounded-step RL match outcome-only
+accuracy while producing verifiable reasoning": the GRPO checkpoints emit bare answers, so grounding
+IoU, chain-answer consistency and necessity rate are undefined for them, and those are the metrics on
+which Stages 1-2 must show a difference. Accuracy and the blind/track gaps of run 2/3 are the bar to
+match.

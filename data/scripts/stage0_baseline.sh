@@ -2,7 +2,8 @@
 # Stage 0 zero-shot baseline on a stratified CLEVRER validation subset, four conditions on the
 # SAME items: plain, blind (black frames), evidence-masked, random-masked.
 # Usage: bash data/scripts/stage0_baseline.sh [model] [per_type] [tag] [instr] [max_new_tokens]
-#   model may be an adapter dir (runs/stage0/adapter); use instr=plain and max_new_tokens=384 for GRPO checkpoints
+#   model may be an adapter dir (runs/stage0/adapter); use instr=plain and max_new_tokens=384 for GRPO checkpoints,
+#   instr=chain and max_new_tokens=512 for SFT / CSR checkpoints (adds chain-level metrics to the summaries)
 #   per_type=250 -> 1000 items per condition; ~45 min per condition on an M4 Pro, minutes on a GPU.
 set -euo pipefail
 MODEL="${1:-Qwen/Qwen2.5-VL-3B-Instruct}"

@@ -19,6 +19,7 @@ import random
 import time
 from pathlib import Path
 
+from causalsight.data.schema import Evidence
 from causalsight.eval.benchmarks import load_benchmark
 from causalsight.eval.masking import (
     EvidenceIndex,
@@ -29,12 +30,29 @@ from causalsight.eval.masking import (
 )
 from causalsight.eval.video import blank_like, sample_frames
 from causalsight.models import load_backend
-from causalsight.train.format import ANSWER_RE, SYSTEM_PROMPT
+from causalsight.train.format import ANSWER_RE, SYSTEM_PROMPT, parse_chain
 from causalsight.train.grpo import PLAIN_SYSTEM
 
 INSTR = {"none": "", "plain": PLAIN_SYSTEM, "chain": SYSTEM_PROMPT}
 
 N_TOTAL_FRAMES = {"clevrer": 128}
+
+
+def chain_metrics(raw: str, gt_regions: list, iou_thr: float = 0.3) -> dict:
+    """Chain-level metrics for a generated response: format validity, step count, and grounding of the
+    emitted evidence against the ground-truth evidence regions of the question.
+    ground_prec: mean over emitted steps of the best spatiotemporal IoU with any GT region.
+    ground_recall: fraction of GT regions matched by some emitted step with IoU >= iou_thr."""
+    p = parse_chain(raw)
+    out = {"chain_ok": int(p.chain is not None), "n_steps": p.n_steps}
+    if p.chain is None or not gt_regions:
+        return out
+    gt = [Evidence(t0, t1, tuple(b)) for (t0, t1, b) in gt_regions]
+    best_per_pred = [max(t.evidence.st_iou(g) for g in gt) for t in p.chain.triplets]
+    best_per_gt = [max(t.evidence.st_iou(g) for t in p.chain.triplets) for g in gt]
+    out["ground_prec"] = sum(best_per_pred) / len(best_per_pred)
+    out["ground_recall"] = sum(1 for v in best_per_gt if v >= iou_thr) / len(best_per_gt)
+    return out
 
 
 def stratified_sample(items: list, per_type: int, seed: int) -> list:
@@ -113,6 +131,8 @@ def run(
         raw = backend.generate(frames, prompt, max_new_tokens=max_new_tokens)
         m = ANSWER_RE.search(raw)
         sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
+        if instr == "chain":
+            sc.update(chain_metrics(raw, evidence.get(item.id) if evidence else []))
         row = {"id": item.id, "question_type": item.question_type, "prompt": item.prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
         if regions:
             row["masked_fraction"] = round(masked_fraction(regions, n_total), 4)
@@ -140,6 +160,18 @@ def run(
     }
     if hasattr(benchmark, "summarize"):
         summary["by_type"] = benchmark.summarize(rows)
+    if instr == "chain" and rows:
+        ch: dict[str, dict] = {}
+        for t in sorted({r["question_type"] for r in rows}) + ["ALL"]:
+            rs = [r for r in rows if t == "ALL" or r["question_type"] == t]
+            ok = [r for r in rs if r.get("chain_ok")]
+            d = {"n": len(rs), "format_rate": sum(r.get("chain_ok", 0) for r in rs) / len(rs), "mean_steps": sum(r.get("n_steps", 0) for r in rs) / len(rs)}
+            for k in ("ground_prec", "ground_recall"):
+                vals = [r[k] for r in ok if k in r]
+                if vals:
+                    d[k] = sum(vals) / len(vals)
+            ch[t] = d
+        summary["chain"] = ch
     if out:
         out.with_suffix(".summary.json").write_text(json.dumps(summary, indent=2))
     return summary

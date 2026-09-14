@@ -103,3 +103,15 @@ def test_harness_instr_and_answer_tag_extraction(tmp_path, monkeypatch):
     summary = H.run("dummy", "clevrer", "validation", root, None, 1, False, 16, instr="plain")
     assert summary["by_type"]["descriptive"]["per_question"] == 1.0
     assert inst["b"].prompts[0].endswith(H.PLAIN_SYSTEM)
+
+
+def test_chain_metrics_grounding():
+    from causalsight.eval.harness import chain_metrics
+
+    raw = "<think>\n[1] Q: a | A: b | E: t=10-12 box=(0.1,0.1,0.3,0.3) | deps=\n[2] Q: c | A: d | E: t=50-50 box=(0.6,0.6,0.9,0.9) | deps=1\n</think>\n<answer>x</answer>"
+    gt = [(10, 12, (0.1, 0.1, 0.3, 0.3)), (90, 90, (0.0, 0.0, 0.2, 0.2))]
+    m = chain_metrics(raw, gt)
+    assert m["chain_ok"] == 1 and m["n_steps"] == 2
+    assert abs(m["ground_prec"] - 0.5) < 1e-9  # step 1 exact match (1.0), step 2 matches nothing (0.0)
+    assert abs(m["ground_recall"] - 0.5) < 1e-9  # one of two GT regions recovered
+    assert chain_metrics("no chain", gt) == {"chain_ok": 0, "n_steps": 0}

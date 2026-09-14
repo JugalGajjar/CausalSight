@@ -1,0 +1,41 @@
+{
+  "model": "runs/stage0_natural/adapter",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mask": "track_random",
+  "chains": "data/triplets/clevrer_validation.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 931,
+  "seconds": 2871.0,
+  "overall": 0.7121374865735768,
+  "by_type": {
+    "descriptive": {
+      "n": 207,
+      "per_question": 0.7584541062801933
+    },
+    "explanatory": {
+      "n": 224,
+      "per_question": 0.7232142857142857,
+      "per_option": 0.9072039072039072
+    },
+    "predictive": {
+      "n": 250,
+      "per_question": 0.844,
+      "per_option": 0.854
+    },
+    "counterfactual": {
+      "n": 250,
+      "per_question": 0.532,
+      "per_option": 0.8063420158550396
+    },
+    "inferential(per_question)": {
+      "n": 724,
+      "per_question": 0.6988950276243094
+    }
+  }
+}
