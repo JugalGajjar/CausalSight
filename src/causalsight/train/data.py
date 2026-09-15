@@ -15,6 +15,8 @@ def load_records(path: Path | str) -> list[dict]:
 def load_frames(root: Path | str, rec: dict, n_frames: int | None = None) -> list[Image.Image]:
     d = Path(root) / rec["frames"]
     files = sorted(d.glob("f*.jpg"))
+    if not files:
+        raise FileNotFoundError(f"no frames under {d} (video not in this frames dir / eval pack?)")
     if n_frames and len(files) > n_frames:
         idx = [round(i * (len(files) - 1) / (n_frames - 1)) for i in range(n_frames)]
         files = [files[i] for i in idx]

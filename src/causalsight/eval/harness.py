@@ -100,6 +100,8 @@ def run(
     max_new_tokens: int = 64,
     mc: str = "multi",
     frames_dir: Path | None = None,
+    batch_size: int = 1,
+    max_items: int | None = None,
     **model_kw,
 ) -> dict:
     backend = load_backend(model, **model_kw)
@@ -126,22 +128,46 @@ def run(
         items = [it for it in items if evidence.get(qkey(it))]
     if per_type:
         items = stratified_sample(items, per_type, seed, key=qkey)
+    if max_items:
+        items = items[:max_items]  # pilot: first items of the same stratified subset
+    pending: list[tuple] = []
+
+    def flush() -> None:
+        if not pending:
+            return
+        raws = backend.generate_batch([p[1] for p in pending], [p[3] for p in pending], max_new_tokens)
+        for (item, _frames, regs, prompt), raw in zip(pending, raws):
+            m = ANSWER_RE.search(raw)
+            sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
+            if instr == "chain":
+                sc.update(chain_metrics(raw, evidence.get(qkey(item)) if evidence else []))
+            row = {"id": item.id, "question_type": item.question_type, "prompt": prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
+            if regs:
+                row["masked_fraction"] = round(masked_fraction(regs, n_total), 4)
+            rows.append(row)
+            if fout:
+                fout.write(json.dumps(row) + "\n")
+                fout.flush()
+        pending.clear()
+
     for item in items:
         regions = evidence.get(qkey(item)) if evidence else []
+        if mask != "none" and not regions:
+            continue  # no localizable evidence for this item; skip so masked/unmasked sets match
         if mask == "random":
             regions = random_regions(regions, rng)
         elif tracker is not None:
             scene_index = int(item.id.split("_")[0])
             decisive = track_evidence.get(qkey(item)) if track_evidence else []
-            control = mask == "track_random"
-            regions = tracker.regions_for(scene_index, decisive, n_total, max_frames, control=control, rng=rng)
+            regions = tracker.regions_for(scene_index, decisive, n_total, max_frames, control=(mask == "track_random"), rng=rng)
             if not regions:
                 continue  # decisive evidence matched no detection; skipped identically in both track modes
         if backend.name == "dummy":
             frames = []
         else:
             if item.video_path not in frame_cache:
-                frame_cache.clear()
+                if len(frame_cache) > 2 * batch_size:
+                    frame_cache.clear()
                 if frames_dir:  # pre-extracted frames (eval pack); no video decoding
                     frame_cache[item.video_path] = load_frames(frames_dir, {"frames": f"frames/{item.video_path.stem}"}, max_frames)
                 else:
@@ -152,18 +178,10 @@ def run(
             elif mask != "none":
                 frames = mask_frames(frames, regions, n_total)
         prompt = item.prompt + ("\n" + INSTR[instr] if INSTR[instr] else "")
-        raw = backend.generate(frames, prompt, max_new_tokens=max_new_tokens)
-        m = ANSWER_RE.search(raw)
-        sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
-        if instr == "chain":
-            sc.update(chain_metrics(raw, evidence.get(qkey(item)) if evidence else []))
-        row = {"id": item.id, "question_type": item.question_type, "prompt": item.prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
-        if regions:
-            row["masked_fraction"] = round(masked_fraction(regions, n_total), 4)
-        rows.append(row)
-        if fout:
-            fout.write(json.dumps(row) + "\n")
-            fout.flush()
+        pending.append((item, frames, regions, prompt))
+        if len(pending) >= batch_size:
+            flush()
+    flush()
     if fout:
         fout.close()
     summary = {
@@ -174,6 +192,7 @@ def run(
         "instr": instr,
         "max_new_tokens": max_new_tokens,
         "mc": mc,
+        "batch_size": batch_size,
         "mask": mask,
         "chains": str(chains) if chains else None,
         "per_type": per_type,
@@ -225,6 +244,8 @@ def main() -> None:
     p.add_argument("--max-new-tokens", type=int, default=64, help="raise to ~384 for --instr plain/chain")
     p.add_argument("--mc", choices=["multi", "option"], default="multi", help="multiple choice as one letters prompt, or one yes/no item per option (chain models)")
     p.add_argument("--frames-dir", type=Path, default=None, help="eval pack dir with frames/<video>/fNN.jpg (skips video decoding)")
+    p.add_argument("--batch-size", type=int, default=1, help="items per generate call; 16 on an 80 GB GPU, 1 on the Mac")
+    p.add_argument("--max-items", type=int, default=None, help="pilot: stop after this many items of the stratified subset")
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
     p.add_argument("--out", type=Path, default=None)
@@ -233,7 +254,7 @@ def main() -> None:
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, device=args.device,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, batch_size=args.batch_size, max_items=args.max_items, device=args.device,
     )
     print(json.dumps(summary, indent=2))
 

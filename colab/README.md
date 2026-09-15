@@ -14,10 +14,11 @@ Upload `train.zip` to Drive under `MyDrive/causalsight/`.
 ## Running long jobs without blocking the notebook
 A `!nohup ... &` cell can still block in Colab. Use this helper instead (define once per session):
 ```python
-import subprocess
+import subprocess, os
 def bg(cmd, log):
     f = open(log, "a")
-    p = subprocess.Popen(cmd, shell=True, stdout=f, stderr=subprocess.STDOUT, cwd="/content/CausalSight", start_new_session=True)
+    p = subprocess.Popen(cmd, shell=True, stdout=f, stderr=subprocess.STDOUT, cwd="/content/CausalSight",
+                         start_new_session=True, env={**os.environ, "PYTHONUNBUFFERED": "1"})
     print("started pid", p.pid, "->", log)
 ```
 Then `bg("cs-grpo --config ... --out <dir>", "<dir>/console.txt")` returns immediately; check progress with
@@ -63,7 +64,7 @@ Then the full run with `--resume` and nohup as for Stage 0. Ablation without the
 Upload `data/frames/evalpack.zip` (built once with `cs-frames --eval-pack ...`, ~220 MB) to Drive, then:
 ```python
 !cd /content/data && unzip -q /content/drive/MyDrive/causalsight/evalpack.zip
-!cd /content/CausalSight && EVALPACK=/content/data/evalpack MC=option bash data/scripts/stage0_baseline.sh /content/drive/MyDrive/causalsight/runs/stage1/adapter 250 sft3b chain 640
+!cd /content/CausalSight && EVALPACK=/content/data/evalpack MC=option BATCH=16 bash data/scripts/stage0_baseline.sh /content/drive/MyDrive/causalsight/runs/stage1/adapter 250 sft3b chain 640
 ```
 Results land in `/content/CausalSight/results/stage0/`; copy the `sft3b_*` files to Drive or download them.
 Chain models (SFT, CSR) use `MC=option chain 640`; bare-answer models (base, Stage 0 GRPO) use `MC=multi plain 384`.

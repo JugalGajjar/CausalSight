@@ -33,25 +33,28 @@ class QwenVLBackend(VLMBackend):
             print(f"loaded adapter {model_id} on {base_id} (merged)")
         self.model = model.to(self.device).eval()
         self.processor = AutoProcessor.from_pretrained(base_id)
+        self.processor.tokenizer.padding_side = "left"  # required for batched generation
         self.max_pixels = max_pixels
 
+    def _messages(self, frames: list[Image.Image], prompt: str) -> list[dict]:
+        return [{"role": "user", "content": [{"type": "video", "video": frames, "max_pixels": self.max_pixels}, {"type": "text", "text": prompt}]}]
+
     def generate(self, frames: list[Image.Image], prompt: str, max_new_tokens: int = 64) -> str:
+        return self.generate_batch([frames], [prompt], max_new_tokens)[0]
+
+    def generate_batch(self, frames_list: list[list[Image.Image]], prompts: list[str], max_new_tokens: int = 64) -> list[str]:
+        """Greedy decoding for a batch of (video, prompt) pairs in one generate call (left-padded)."""
         import torch
         from qwen_vl_utils import process_vision_info
 
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "video", "video": frames, "max_pixels": self.max_pixels},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ]
-        text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        image_inputs, video_inputs = process_vision_info(messages)
-        inputs = self.processor(text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt").to(self.device)
+        texts, videos = [], []
+        for frames, prompt in zip(frames_list, prompts):
+            msgs = self._messages(frames, prompt)
+            texts.append(self.processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
+            _imgs, vids = process_vision_info(msgs)
+            videos.extend(vids)
+        inputs = self.processor(text=texts, videos=videos, padding=True, return_tensors="pt").to(self.device)
         with torch.no_grad():
-            out = self.model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False)
+            out = self.model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False, pad_token_id=self.processor.tokenizer.pad_token_id)
         out = out[:, inputs["input_ids"].shape[1] :]
-        return self.processor.batch_decode(out, skip_special_tokens=True)[0].strip()
+        return [t.strip() for t in self.processor.batch_decode(out, skip_special_tokens=True)]
