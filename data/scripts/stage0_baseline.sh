@@ -22,14 +22,20 @@ else
   EXTRA=()
 fi
 COMMON=(--bench clevrer --split validation --chains "$CHAINS" --per-type "$PER_TYPE" --seed 0 --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK" --mc "$MC" --batch-size "$BATCH" "${EXTRA[@]}")
-mkdir -p results/stage0
-cs-eval "${COMMON[@]}"                 --out "results/stage0/${TAG}_plain.jsonl"
-cs-eval "${COMMON[@]}" --blind         --out "results/stage0/${TAG}_blind.jsonl"
-cs-eval "${COMMON[@]}" --mask evidence --out "results/stage0/${TAG}_mask_evidence.jsonl"
-cs-eval "${COMMON[@]}" --mask random   --out "results/stage0/${TAG}_mask_random.jsonl"
-cs-faithfulness results/stage0 --tag "$TAG"
+OUT="${RESULTS_DIR:-results/stage0}"   # on Colab set RESULTS_DIR to a Drive path so results survive disconnects
+mkdir -p "$OUT"
+run() {  # run <condition-name> [extra cs-eval args]: skip conditions that already have a finished summary
+  local name="$1"; shift
+  if [ -f "$OUT/${TAG}_${name}.summary.json" ]; then echo "have ${TAG}_${name}, skipping"; return; fi
+  cs-eval "${COMMON[@]}" "$@" --out "$OUT/${TAG}_${name}.jsonl"
+}
+run plain
+run blind --blind
+run mask_evidence --mask evidence
+run mask_random --mask random
+cs-faithfulness "$OUT" --tag "$TAG"
 
 # Object-track conditions (stronger intervention; see results/stage0/README.md)
-cs-eval "${COMMON[@]}" --mask track        --out "results/stage0/${TAG}_mask_track.jsonl"
-cs-eval "${COMMON[@]}" --mask track_random --out "results/stage0/${TAG}_mask_track_random.jsonl"
-cs-faithfulness results/stage0 --tag "$TAG"
+run mask_track --mask track
+run mask_track_random --mask track_random
+cs-faithfulness "$OUT" --tag "$TAG"

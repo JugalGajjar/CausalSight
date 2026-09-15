@@ -64,9 +64,9 @@ Then the full run with `--resume` and nohup as for Stage 0. Ablation without the
 Upload `data/frames/evalpack.zip` (built once with `cs-frames --eval-pack ...`, ~220 MB) to Drive, then:
 ```python
 !cd /content/data && unzip -q /content/drive/MyDrive/causalsight/evalpack.zip
-!cd /content/CausalSight && EVALPACK=/content/data/evalpack MC=option BATCH=16 bash data/scripts/stage0_baseline.sh /content/drive/MyDrive/causalsight/runs/stage1/adapter 250 sft3b chain 640
+!cd /content/CausalSight && RESULTS_DIR=/content/drive/MyDrive/causalsight/results EVALPACK=/content/data/evalpack MC=option BATCH=8 bash data/scripts/stage0_baseline.sh /content/drive/MyDrive/causalsight/runs/stage1/adapter 250 sft3b chain 640
 ```
-Results land in `/content/CausalSight/results/stage0/`; copy the `sft3b_*` files to Drive or download them.
+With RESULTS_DIR on Drive the results survive disconnects, and re-running the same command skips conditions that already finished.
 Chain models (SFT, CSR) use `MC=option chain 640`; bare-answer models (base, Stage 0 GRPO) use `MC=multi plain 384`.
 
 ## After training, on the Mac
