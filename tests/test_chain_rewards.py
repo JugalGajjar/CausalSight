@@ -17,3 +17,10 @@ def test_grounding_and_process_reward_ordering():
     good, rev, off = process(GOOD, REC), process(REVERSED, REC), process(OFF, REC)
     assert good > rev > off  # reversed causal order is penalized but still matches content
     assert abs(good - 1.0) < 1e-9 and abs(rev - 0.5) < 1e-9
+
+
+def test_grounding_obj_without_proposals_is_zero(monkeypatch):
+    from causalsight.train.rewards.chain_rewards import grounding_obj
+
+    monkeypatch.delenv("CS_PROPOSALS", raising=False)
+    assert grounding_obj(GOOD, {"problem_id": "12_3"}) == 0.0

@@ -87,3 +87,36 @@ def process(text: str, rec: dict, beta: float = 0.5) -> float:
         pen = beta * (v / tot) if tot else 0.0
         best = max(best, max(0.0, score - pen))
     return best
+
+
+# ---------------------------------------------------------------- frame-consistent grounding reward
+
+_PROPS: dict[int, object] = {}
+
+
+def grounding_obj(text: str, rec: dict) -> float:
+    """R_ground, frame-consistent variant: mean over steps that name a fully specified object of the IoU
+    between the emitted box and the detector's box for that object *at the frames the step cites*. A step
+    is not penalized for citing a different (valid) frame than the reference chain. Needs the derender
+    proposals of the training videos: set CS_PROPOSALS to their directory."""
+    import os
+    from pathlib import Path
+
+    from causalsight.data.clevrer_evidence import ProposalIndex
+    from causalsight.eval.object_grounding import step_scores
+
+    p = parse_chain(text)
+    root = os.environ.get("CS_PROPOSALS")
+    if p.chain is None or not root:
+        return 0.0
+    scene = int(str(rec["problem_id"]).split("_")[0])
+    if scene not in _PROPS:
+        if len(_PROPS) > 8:
+            _PROPS.clear()
+        f = Path(root) / f"proposal_{scene:05d}.json"
+        _PROPS[scene] = ProposalIndex.load(f) if f.exists() else None
+    idx = _PROPS[scene]
+    if idx is None:
+        return 0.0
+    st = step_scores(p.chain, idx)
+    return sum(x["iou"] for x in st) / len(st) if st else 0.0
