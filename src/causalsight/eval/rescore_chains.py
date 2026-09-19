@@ -9,8 +9,11 @@ import argparse
 import json
 from pathlib import Path
 
+from causalsight.data.clevrer_evidence import ProposalIndex
 from causalsight.eval.harness import chain_metrics
 from causalsight.eval.masking import EvidenceIndex
+from causalsight.eval.object_grounding import step_scores
+from causalsight.train.format import parse_chain
 
 
 def main() -> None:
@@ -19,7 +22,21 @@ def main() -> None:
     ap.add_argument("--tag", required=True)
     ap.add_argument("--chains", type=Path, required=True)
     ap.add_argument("--condition", default="plain")
+    ap.add_argument("--proposals", type=Path, default=None, help="derender proposals dir: adds frame-consistent object grounding")
     a = ap.parse_args()
+    props: dict[int, ProposalIndex] = {}
+
+    def obj_scores(r: dict) -> list[dict]:
+        p = parse_chain(r["raw"])
+        if p.chain is None:
+            return []
+        scene = int(r["id"].split("_")[0])
+        if scene not in props:
+            if len(props) > 50:
+                props.clear()
+            props[scene] = ProposalIndex.load(a.proposals / f"proposal_{scene:05d}.json")
+        return step_scores(p.chain, props[scene])
+
     idx = EvidenceIndex.from_chains(a.chains)
     rows = [json.loads(line) for line in (a.dir / f"{a.tag}_{a.condition}.jsonl").open()]
     out: dict[str, dict] = {}
@@ -31,6 +48,13 @@ def main() -> None:
             vals = [m[k] for m in ms if k in m]
             if vals:
                 d[k] = round(sum(vals) / len(vals), 4)
+        if a.proposals:
+            st = [x for r in rs for x in obj_scores(r)]
+            if st:
+                d["obj_steps"] = len(st)
+                d["obj_iou"] = round(sum(x["iou"] for x in st) / len(st), 4)
+                d["obj_iou>=0.5"] = round(sum(x["iou"] >= 0.5 for x in st) / len(st), 4)
+                d["obj_visible"] = round(sum(x["visible"] for x in st) / len(st), 4)
         out[t] = d
     print(json.dumps(out, indent=1))
     (a.dir / f"{a.tag}_{a.condition}.chain_rescored.json").write_text(json.dumps(out, indent=1))
