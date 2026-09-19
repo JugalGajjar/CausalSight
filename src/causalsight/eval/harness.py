@@ -140,7 +140,7 @@ def run(
             m = ANSWER_RE.search(raw)
             sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
             if instr == "chain":
-                sc.update(chain_metrics(raw, evidence.get(qkey(item)) if evidence else []))
+                sc.update(chain_metrics(raw, evidence.get_for_item(item.id, qkey(item)) if evidence else []))
             row = {"id": item.id, "question_type": item.question_type, "prompt": prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
             if regs:
                 row["masked_fraction"] = round(masked_fraction(regs, n_total), 4)

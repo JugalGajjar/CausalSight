@@ -84,8 +84,9 @@ def decisive_triplets(chain: dict) -> list[dict]:
 class EvidenceIndex:
     """Evidence regions per CLEVRER question, from generated chain files. Key: '<scene>_<qid>'."""
 
-    def __init__(self, regions: dict[str, list[Region]]) -> None:
+    def __init__(self, regions: dict[str, list[Region]], option_regions: dict[str, list[Region]] | None = None) -> None:
         self.regions = regions
+        self.option_regions = option_regions or {}  # key '<scene>_<qid>_<choice_id>': that option's own chain
 
     @classmethod
     def from_chains(cls, path: Path | str, last_only: bool = False) -> EvidenceIndex:
@@ -94,20 +95,29 @@ class EvidenceIndex:
         and counterfactual chains, otherwise the final triplet. Older chain files without roles fall back
         to the question prefix."""
         regions: dict[str, set[Region]] = defaultdict(set)
+        opt: dict[str, set[Region]] = defaultdict(set)
         with Path(path).open() as f:
             for line in f:
                 c = json.loads(line)
                 key = f"{c['meta']['scene_index']}_{c['meta']['question_id']}"
+                cid = c["meta"].get("choice_id")
                 for t in (decisive_triplets(c) if last_only else c["triplets"]):
                     e = t["evidence"]
                     box = tuple(e["box"])
                     if box == (0.0, 0.0, 1.0, 1.0):
                         continue  # "none found" whole-video evidence carries no localizable region
                     regions[key].add((e["t_start"], e["t_end"], box))
-        return cls({k: sorted(v) for k, v in regions.items()})
+                    if cid is not None:
+                        opt[f"{key}_{cid}"].add((e["t_start"], e["t_end"], box))
+        return cls({k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()})
 
     def get(self, key: str) -> list[Region]:
         return self.regions.get(key, [])
+
+    def get_for_item(self, item_id: str, question_id: str) -> list[Region]:
+        """Grounding reference for an item: a per-option item is scored against its own option's chain,
+        not the evidence pooled over all options of the question (which dilutes recall)."""
+        return self.option_regions.get(item_id) or self.regions.get(question_id, [])
 
 
 def evidence_to_region(e: Evidence) -> Region:

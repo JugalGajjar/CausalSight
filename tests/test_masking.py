@@ -35,3 +35,20 @@ def test_random_regions_preserve_size_and_span():
 
 def test_masked_fraction():
     assert abs(masked_fraction([(0, 63, (0.0, 0.0, 0.5, 0.5))], 128) - 0.125) < 1e-9
+
+
+def test_evidence_index_per_option_lookup(tmp_path):
+    import json
+
+    from causalsight.eval.masking import EvidenceIndex
+
+    def chain(cid, box):
+        return {"question_type": "predictive", "meta": {"scene_index": 1, "question_id": 2, "choice_id": cid},
+                "triplets": [{"question": "q", "role": "observe", "evidence": {"t_start": 3, "t_end": 3, "box": box}}]}
+
+    p = tmp_path / "c.jsonl"
+    p.write_text("\n".join(json.dumps(c) for c in (chain(0, [0.1, 0.1, 0.2, 0.2]), chain(1, [0.5, 0.5, 0.6, 0.6]))) + "\n")
+    idx = EvidenceIndex.from_chains(p)
+    assert len(idx.get("1_2")) == 2  # pooled over options
+    assert idx.get_for_item("1_2_1", "1_2") == [(3, 3, (0.5, 0.5, 0.6, 0.6))]  # that option only
+    assert len(idx.get_for_item("1_2", "1_2")) == 2  # multi-mode item falls back to pooled
