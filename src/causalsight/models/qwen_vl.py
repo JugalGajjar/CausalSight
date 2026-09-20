@@ -70,8 +70,9 @@ class QwenVLBackend(VLMBackend):
     def generate(self, frames: list[Image.Image], prompt: str, max_new_tokens: int = 64) -> str:
         return self.generate_batch([frames], [prompt], max_new_tokens)[0]
 
-    def generate_batch(self, frames_list: list[list[Image.Image]], prompts: list[str], max_new_tokens: int = 64) -> list[str]:
-        """Greedy decoding for a batch of (video, prompt) pairs in one generate call (left-padded)."""
+    def generate_batch(self, frames_list: list[list[Image.Image]], prompts: list[str], max_new_tokens: int = 64, temperature: float = 0.0) -> list[str]:
+        """Decoding for a batch of (video, prompt) pairs in one generate call (left-padded). Greedy unless
+        `temperature` > 0."""
         import torch
         from qwen_vl_utils import process_vision_info
 
@@ -83,6 +84,7 @@ class QwenVLBackend(VLMBackend):
             videos.extend(vids)
         inputs = self.processor(text=texts, videos=videos, padding=True, return_tensors="pt").to(self.device)
         with torch.no_grad():
-            out = self.model.generate(**inputs, max_new_tokens=max_new_tokens, do_sample=False, pad_token_id=self.processor.tokenizer.pad_token_id)
+            kw = {"do_sample": True, "temperature": temperature, "top_p": 1.0} if temperature > 0 else {"do_sample": False}
+            out = self.model.generate(**inputs, max_new_tokens=max_new_tokens, pad_token_id=self.processor.tokenizer.pad_token_id, **kw)
         out = out[:, inputs["input_ids"].shape[1] :]
         return [t.strip() for t in self.processor.batch_decode(out, skip_special_tokens=True)]
