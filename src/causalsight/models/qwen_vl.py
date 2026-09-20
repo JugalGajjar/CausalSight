@@ -15,8 +15,32 @@ from PIL import Image
 from causalsight.models.base import VLMBackend
 
 
+def resolve_init_adapters(adapter_dir: Path, explicit: str | None = None) -> list[Path]:
+    """Adapters that must be merged before `adapter_dir`. Reads `init_adapter` from the run's config.yaml
+    (written by cs-grpo next to the adapter directory). If that path does not exist on this machine (runs
+    are trained on Colab and evaluated elsewhere), falls back to a sibling run directory of the same name."""
+    if explicit:
+        p = Path(explicit)
+        if not (p / "adapter_config.json").exists():
+            raise FileNotFoundError(f"--init-adapter {p} has no adapter_config.json")
+        return [p]
+    cfg = adapter_dir.parent / "config.yaml"
+    if not cfg.exists():
+        return []
+    import yaml
+
+    init = (yaml.safe_load(cfg.read_text()) or {}).get("init_adapter")
+    if not init:
+        return []
+    cands = [Path(init), adapter_dir.parent.parent / Path(init).parent.name / "adapter"]
+    for c in cands:
+        if (c / "adapter_config.json").exists():
+            return [c]
+    raise FileNotFoundError(f"{adapter_dir} was trained on top of {init}, which was not found (tried {[str(c) for c in cands]}); pass --init-adapter")
+
+
 class QwenVLBackend(VLMBackend):
-    def __init__(self, model_id: str, device: str | None = None, dtype: str = "bfloat16", max_pixels: int = 360 * 420, **_) -> None:
+    def __init__(self, model_id: str, device: str | None = None, dtype: str = "bfloat16", max_pixels: int = 360 * 420, init_adapter: str | None = None, **_) -> None:
         import torch
         from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
@@ -29,6 +53,10 @@ class QwenVLBackend(VLMBackend):
         if adapter.exists():
             from peft import PeftModel
 
+            # A Stage 2 adapter was trained on top of merged Stage 1 weights: merge that one first.
+            for init in resolve_init_adapters(Path(model_id), init_adapter):
+                model = PeftModel.from_pretrained(model, str(init)).merge_and_unload()
+                print(f"merged init adapter {init}")
             model = PeftModel.from_pretrained(model, model_id).merge_and_unload()
             print(f"loaded adapter {model_id} on {base_id} (merged)")
         self.model = model.to(self.device).eval()

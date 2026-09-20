@@ -248,13 +248,14 @@ def main() -> None:
     p.add_argument("--max-items", type=int, default=None, help="pilot: stop after this many items of the stratified subset")
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
+    p.add_argument("--init-adapter", default=None, help="adapter to merge before --model (normally found via the run's config.yaml)")
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
     root = args.root or Path("data/raw") / args.bench
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, batch_size=args.batch_size, max_items=args.max_items, device=args.device,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, batch_size=args.batch_size, max_items=args.max_items, device=args.device, init_adapter=args.init_adapter,
     )
     print(json.dumps(summary, indent=2))
 
