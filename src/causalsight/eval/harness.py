@@ -192,6 +192,7 @@ def run(
         "instr": instr,
         "max_new_tokens": max_new_tokens,
         "mc": mc,
+        "max_pixels": model_kw.get("max_pixels"),
         "batch_size": batch_size,
         "mask": mask,
         "chains": str(chains) if chains else None,
@@ -248,6 +249,7 @@ def main() -> None:
     p.add_argument("--max-items", type=int, default=None, help="pilot: stop after this many items of the stratified subset")
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
+    p.add_argument("--max-pixels", type=int, default=None, help="legacy per-frame pixel cap (151200 reproduces pre-2026-09-20 evaluations); default matches training")
     p.add_argument("--init-adapter", default=None, help="adapter to merge before --model (normally found via the run's config.yaml)")
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
@@ -255,7 +257,7 @@ def main() -> None:
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, batch_size=args.batch_size, max_items=args.max_items, device=args.device, init_adapter=args.init_adapter,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, batch_size=args.batch_size, max_items=args.max_items, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
     )
     print(json.dumps(summary, indent=2))
 

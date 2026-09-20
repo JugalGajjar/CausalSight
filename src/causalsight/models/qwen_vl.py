@@ -40,7 +40,10 @@ def resolve_init_adapters(adapter_dir: Path, explicit: str | None = None) -> lis
 
 
 class QwenVLBackend(VLMBackend):
-    def __init__(self, model_id: str, device: str | None = None, dtype: str = "bfloat16", max_pixels: int = 360 * 420, init_adapter: str | None = None, **_) -> None:
+    def __init__(self, model_id: str, device: str | None = None, dtype: str = "bfloat16", max_pixels: int | None = None, init_adapter: str | None = None, **_) -> None:
+        """`max_pixels=None` builds video inputs exactly as the trainers do (480x320 frames -> 504x336,
+        1,728 video tokens). Evaluations before 2026-09-20 used max_pixels=360*420 (-> 448x280, a different
+        aspect ratio), which understated box grounding of trained models; pass it only to reproduce those."""
         import torch
         from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
@@ -65,7 +68,10 @@ class QwenVLBackend(VLMBackend):
         self.max_pixels = max_pixels
 
     def _messages(self, frames: list[Image.Image], prompt: str) -> list[dict]:
-        return [{"role": "user", "content": [{"type": "video", "video": frames, "max_pixels": self.max_pixels}, {"type": "text", "text": prompt}]}]
+        video = {"type": "video", "video": frames}
+        if self.max_pixels:
+            video["max_pixels"] = self.max_pixels
+        return [{"role": "user", "content": [video, {"type": "text", "text": prompt}]}]
 
     def generate(self, frames: list[Image.Image], prompt: str, max_new_tokens: int = 64) -> str:
         return self.generate_batch([frames], [prompt], max_new_tokens)[0]
