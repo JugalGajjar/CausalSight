@@ -94,29 +94,38 @@ def process(text: str, rec: dict, beta: float = 0.5) -> float:
 _PROPS: dict[int, object] = {}
 
 
-def grounding_obj(text: str, rec: dict) -> float:
-    """R_ground, frame-consistent variant: mean over steps that name a fully specified object of the IoU
-    between the emitted box and the detector's box for that object *at the frames the step cites*. A step
-    is not penalized for citing a different (valid) frame than the reference chain. Needs the derender
-    proposals of the training videos: set CS_PROPOSALS to their directory."""
+def _proposals_for(rec: dict):
     import os
     from pathlib import Path
 
     from causalsight.data.clevrer_evidence import ProposalIndex
-    from causalsight.eval.object_grounding import step_scores
 
-    p = parse_chain(text)
     root = os.environ.get("CS_PROPOSALS")
-    if p.chain is None or not root:
-        return 0.0
+    if not root:
+        return None
     scene = int(str(rec["problem_id"]).split("_")[0])
     if scene not in _PROPS:
         if len(_PROPS) > 8:
             _PROPS.clear()
         f = Path(root) / f"proposal_{scene:05d}.json"
         _PROPS[scene] = ProposalIndex.load(f) if f.exists() else None
-    idx = _PROPS[scene]
-    if idx is None:
-        return 0.0
-    st = step_scores(p.chain, idx)
-    return sum(x["iou"] for x in st) / len(st) if st else 0.0
+    return _PROPS[scene]
+
+
+def grounding_obj_steps(text: str, rec: dict) -> dict[int, float]:
+    """Per-step frame-consistent grounding: triplet index -> IoU of the emitted box with the detector's box
+    for the object(s) the step names, at the frames the step cites. Steps naming no object are absent."""
+    from causalsight.eval.object_grounding import step_scores
+
+    p = parse_chain(text)
+    idx = _proposals_for(rec)
+    if p.chain is None or idx is None:
+        return {}
+    return {x["index"]: x["iou"] for x in step_scores(p.chain, idx)}
+
+
+def grounding_obj(text: str, rec: dict) -> float:
+    """R_ground, frame-consistent variant (sequence level): mean of `grounding_obj_steps`. A step is not
+    penalized for citing a different (valid) frame than the reference chain. Needs CS_PROPOSALS."""
+    st = grounding_obj_steps(text, rec)
+    return sum(st.values()) / len(st) if st else 0.0

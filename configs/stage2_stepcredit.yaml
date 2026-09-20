@@ -1,0 +1,41 @@
+# Stage 2b: CSR with step-level credit assignment and the frame-consistent grounding reward.
+# Launch with CS_PROPOSALS=/content/data/train_proposals. Run A (stage2_opt) used sequence-level credit and
+# barely moved in 1,000 steps (reward 1.88 -> 1.96); see notes/2026-09-19-stage2.md.
+model: Qwen/Qwen2.5-VL-3B-Instruct
+init_adapter: /content/drive/MyDrive/causalsight/runs/stage1/adapter
+data_file: /content/CausalSight/data/subsets/rl_balanced_1500_options.jsonl
+prompt_style: chain
+instr_in_user: true
+n_frames: 16
+group_size: 8
+micro_batch: 8
+max_new_tokens: 640
+temperature: 1.0
+lr: 1.0e-5
+kl_beta: 0.04
+kl_log_ratio_clip: 5.0
+max_grad_norm: 1.0
+steps: 1000
+save_every: 50
+log_every: 1
+seed: 0
+dtype: bfloat16
+attn: sdpa
+gradient_checkpointing: true
+step_credit: 1.0                  # weight of the per-step advantage added on each step line's tokens
+lora:
+  r: 64
+  alpha: 128
+  dropout: 0.05
+  targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+rewards:
+  outcome: 1.0
+  format_chain: 0.5
+  grounding_obj: 0.5              # per-step: box vs the named object at the cited frame
+  necessity: 0.5                  # per-step: +1 necessary, -gamma padding
+  process: 0.5
+necessity_frames: 8
+necessity:
+  delta: 0.1
+  eps: 0.02
+  gamma: 0.5

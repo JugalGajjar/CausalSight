@@ -92,3 +92,20 @@ def parse_chain(text: str, video_id: str = "", question: str = "", question_type
     except ValueError:
         return Parsed(None, answer, len(lines), n_steps, True)
     return Parsed(chain, answer, len(lines), n_steps, True)
+
+
+def step_spans(text: str) -> list[tuple[int, int]]:
+    """Character spans [start, end) of the step lines inside <think>, in order. When `parse_chain(text)`
+    returns a chain, span k belongs to triplet k (both walk the same matching lines)."""
+    think = THINK_RE.search(text)
+    if not think:
+        return []
+    out = []
+    pos = think.start(1)
+    for raw in think.group(1).splitlines(keepends=True):
+        ln = raw.strip()
+        if ln and STEP_RE.match(ln):
+            lead = len(raw) - len(raw.lstrip())
+            out.append((pos + lead, pos + lead + len(ln)))
+        pos += len(raw)
+    return out

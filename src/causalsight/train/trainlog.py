@@ -27,6 +27,7 @@ def summarize(path: Path, window: int) -> list[dict]:
             "kl": round(sum(r["kl"] for r in upd) / len(upd), 4) if upd else 0.0,
             "grad_norm": round(sum(r.get("grad_norm", 0.0) for r in upd) / len(upd), 2) if upd else 0.0,
             "kl_clip": round(sum(r.get("kl_clip_frac", 0.0) for r in upd) / len(upd), 4) if upd else 0.0,
+            "credited": round(sum(r.get("steps_credited", 0) for r in w) / len(w), 1),
             "sec_per_step": round((w[-1]["sec"] - w[0]["sec"]) / max(1, len(w) - 1), 1),
         }
         out.append(d)

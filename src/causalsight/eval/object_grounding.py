@@ -30,7 +30,7 @@ def step_scores(chain: TripletChain, idx: ProposalIndex, tol: int = 3) -> list[d
     iou (emitted box vs union of the named objects' detected boxes at the cited frames), visible (all named
     objects detected within `tol` frames of the cited span)."""
     out = []
-    for t in chain.triplets:
+    for k, t in enumerate(chain.triplets):
         objs = named_objects(t.answer)
         if not objs:
             continue
@@ -47,5 +47,5 @@ def step_scores(chain: TripletChain, idx: ProposalIndex, tol: int = 3) -> list[d
         if boxes:
             ref = Evidence(e.t_start, e.t_end, union_box(boxes))
             iou = e.spatial_iou(ref)
-        out.append({"iou": iou, "visible": visible, "n_objects": len(objs)})
+        out.append({"index": k, "iou": iou, "visible": visible, "n_objects": len(objs)})
     return out

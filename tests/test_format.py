@@ -56,3 +56,15 @@ def test_round_trip_on_generated_chains():
             if n >= 2000:
                 break
     assert n == 2000
+
+
+def test_step_spans_align_with_triplets():
+    from causalsight.train.format import step_spans
+
+    text = format_chain(sample_chain())
+    spans = step_spans(text)
+    p = parse_chain(text)
+    assert len(spans) == len(p.chain.triplets) == 2
+    assert text[spans[0][0] : spans[0][1]].startswith("[1] Q: Which object is the gray sphere?")
+    assert text[spans[1][0] : spans[1][1]].startswith("[2] Q:") and text[spans[1][0] : spans[1][1]].endswith("deps=1")
+    assert step_spans("no think block") == []

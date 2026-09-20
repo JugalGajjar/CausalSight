@@ -60,6 +60,16 @@ Pilot: check seconds/step and GPU memory (`micro_batch` 4 with 640-token chains;
 Then the full run with `--resume` and nohup as for Stage 0. Ablation without the necessity reward:
 `configs/stage2_no_nec.yaml` into `runs/stage2_no_nec`. Evaluate with `--instr chain --max-new-tokens 640`.
 
+## Stage 2b: step-level credit + frame-consistent grounding
+Upload `data/frames/train_proposals.zip` (45 MB) to Drive once, then:
+```python
+!cd /content/data && unzip -q -o /content/drive/MyDrive/causalsight/train_proposals.zip
+import os; os.makedirs("/content/drive/MyDrive/causalsight/runs/stage2_stepcredit", exist_ok=True)
+bg("CS_PROPOSALS=/content/data/train_proposals cs-grpo --config configs/stage2_stepcredit.yaml --data /content/data/train --out /content/drive/MyDrive/causalsight/runs/stage2_stepcredit --resume", "/content/drive/MyDrive/causalsight/runs/stage2_stepcredit/console.txt")
+```
+Healthy signs in `log.jsonl`: `steps_credited` > 0 on most steps, `r_grounding_obj` rising over the first
+few hundred steps (Stage 1 baseline ~0.19), KL growing past the ~0.02 where run A stalled.
+
 ## Evaluating on the GPU (any checkpoint, ~1 h for six conditions)
 Upload `data/frames/evalpack.zip` (built once with `cs-frames --eval-pack ...`, ~220 MB) to Drive, then:
 ```python

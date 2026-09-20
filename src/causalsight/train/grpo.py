@@ -26,7 +26,8 @@ import yaml
 
 from causalsight.data.schema import TripletChain
 from causalsight.train.data import load_frames, load_records
-from causalsight.train.format import SYSTEM_PROMPT, format_step, parse_chain
+from causalsight.train.format import SYSTEM_PROMPT, format_step, parse_chain, step_spans
+from causalsight.train.rewards.chain_rewards import grounding_obj_steps
 from causalsight.train.rewards.necessity import score_from_deltas
 from causalsight.train.rewards.registry import REWARDS
 
@@ -85,6 +86,12 @@ class GRPOTrainer:
         self.rewards = [(name, REWARDS.get(name), float(w)) for name, w in cfg["rewards"].items()]
         self.nec_cfg = cfg.get("necessity", {"delta": 0.1, "eps": 0.02, "gamma": 0.5})
         self.kl_clip = float(cfg.get("kl_log_ratio_clip", 5.0))
+        if "grounding_obj" in cfg["rewards"]:
+            import os
+
+            root = os.environ.get("CS_PROPOSALS")
+            if not root or not any(Path(root).glob("proposal_*.json")):
+                raise SystemExit(f"grounding_obj reward needs CS_PROPOSALS pointing at the derender proposals (got {root!r}); without it the reward is silently zero")
         self.rng = random.Random(cfg.get("seed", 0))
         self.order = list(range(len(self.records)))
         self.rng.shuffle(self.order)
@@ -170,6 +177,31 @@ class GRPOTrainer:
         tok_lp = lp.gather(-1, completions.unsqueeze(-1)).squeeze(-1)
         return tok_lp, comp_mask
 
+    def _token_spans(self, comp_ids, text: str) -> list:
+        """Token index ranges [a, b) of each step line of `text` within the completion ids. Uses the
+        byte-level BPE token strings (one char per byte for ASCII); returns [] if they do not reproduce the
+        decoded text, so step credit falls back to sequence credit for that completion."""
+        tok = self.processor.tokenizer
+        pieces = tok.convert_ids_to_tokens(comp_ids.tolist())
+        special = set(tok.all_special_tokens)
+        starts, pos, built = [], 0, []
+        for pc in pieces:
+            if pc in special:
+                break
+            starts.append(pos)
+            pos += len(pc)
+            built.append(pc)
+        joined = "".join(built).replace("\u0120", " ").replace("\u010a", "\n")
+        if joined.strip() != text.strip():
+            return []
+        shift = (len(joined) - len(joined.lstrip())) - (len(text) - len(text.lstrip()))
+        out = []
+        for c0, c1 in step_spans(text):
+            c0, c1 = c0 + shift, c1 + shift
+            idx = [j for j, st in enumerate(starts) if st < c1 and st + len(built[j]) > c0]
+            out.append((idx[0], idx[-1] + 1) if idx else None)
+        return out
+
     def _gold_logprob(self, inputs, chain_texts: list[str], gold: str) -> list[float]:
         """log p(gold answer | prompt, chain) under the reference model, for each chain text, in one
         batched teacher-forced forward (video inputs repeated per variant)."""
@@ -200,6 +232,7 @@ class GRPOTrainer:
         than delta, minus gamma x fraction of padding steps (drop <= eps). Verifier = reference model."""
         import math as _m
 
+        self._last_nec_steps = {}
         p = parse_chain(text)
         if p.chain is None:
             return 0.0
@@ -211,7 +244,10 @@ class GRPOTrainer:
         lps = self._gold_logprob(inputs, variants, rec["gold"])
         p_full = _m.exp(lps[0])
         deltas = [p_full - _m.exp(lp) for lp in lps[1:]]
-        return score_from_deltas(deltas, self.nec_cfg["delta"], self.nec_cfg["eps"], self.nec_cfg["gamma"])
+        d, e, gam = self.nec_cfg["delta"], self.nec_cfg["eps"], self.nec_cfg["gamma"]
+        # per-step credit for step-level advantages: +1 necessary, -gamma padding, 0 in between
+        self._last_nec_steps = {i: (1.0 if x > d else (-gam if x <= e else 0.0)) for i, x in enumerate(deltas)}
+        return score_from_deltas(deltas, d, e, gam)
 
     def train_step(self, rec: dict) -> dict:
         import torch
@@ -237,11 +273,17 @@ class GRPOTrainer:
             # cheaper verifier context: a uniform subset of the frames (the verdict rests on the chain text)
             idx = [round(i * (len(frames) - 1) / (nf - 1)) for i in range(nf)]
             nec_inputs = self._inputs(rec, [frames[i] for i in idx])
+        step_credit = float(self.cfg.get("step_credit", 0.0))
+        step_scores: list[dict[int, float]] = [{} for _ in range(g)]  # completion -> triplet index -> weighted step reward
         for i, t in enumerate(texts):
             for name, fn, w in self.rewards:
                 v = self._necessity(nec_inputs, rec, t) if name == "necessity" else float(fn(t, rec))
                 parts[name].append(v)
                 rewards[i] += w * v
+                if step_credit:
+                    per = self._last_nec_steps if name == "necessity" else grounding_obj_steps(t, rec) if name == "grounding_obj" else {}
+                    for k, val in per.items():
+                        step_scores[i][k] = step_scores[i].get(k, 0.0) + w * val
         stats_common = {
             "reward_mean": float(rewards.mean()),
             "reward_std": float(rewards.std()) if g > 1 else 0.0,
@@ -249,12 +291,31 @@ class GRPOTrainer:
             "comp_len": float((completions != pad).sum(1).float().mean()),
             "sample": texts[0][:300],
         }
-        if g > 1 and float(rewards.std()) < 1e-6:
+        flat_steps = [v for d in step_scores for v in d.values()]
+        step_var = len(flat_steps) > 1 and (max(flat_steps) - min(flat_steps)) > 1e-6
+        if g > 1 and float(rewards.std()) < 1e-6 and not step_var:
             # no learning signal in this group; an update here would only be optimizer-scaled numerical
             # noise between the reference and policy passes, so skip it
             return {**stats_common, "loss": 0.0, "kl": 0.0, "grad_norm": 0.0, "skipped": 1}
         adv = (rewards - rewards.mean()) / (rewards.std() + 1e-4) if g > 1 else rewards
-        adv = adv.to(self.device)
+        if float(rewards.std()) < 1e-6:
+            adv = torch.zeros(g)
+        # token-level advantages: the sequence advantage everywhere, plus (step_credit x) the group-normalized
+        # step reward on the tokens of each step line, so a good or bad box moves the tokens that produced it
+        adv_tok = adv.unsqueeze(1).repeat(1, completions.shape[1])
+        n_credited = 0
+        if step_credit and step_var:
+            mu = sum(flat_steps) / len(flat_steps)
+            sd = (sum((v - mu) ** 2 for v in flat_steps) / len(flat_steps)) ** 0.5 + 1e-4
+            for i in range(g):
+                spans = self._token_spans(completions[i], texts[i])
+                for k, val in step_scores[i].items():
+                    if k < len(spans) and spans[k] is not None:
+                        a, b = spans[k]
+                        adv_tok[i, a:b] += step_credit * (val - mu) / sd
+                        n_credited += 1
+        adv_tok = adv_tok.to(self.device)
+        stats_common["steps_credited"] = n_credited
 
         self.model.train()
         micro = self.cfg.get("micro_batch", g)
@@ -275,7 +336,7 @@ class GRPOTrainer:
             n_clipped += int(((ref_lp - pol_lp).abs() > self.kl_clip).sum())
             n_tokens += int(mask.sum())
             kl = torch.exp(log_ratio) - log_ratio - 1
-            per_tok = -(ratio * adv[s : s + micro].unsqueeze(1) - beta * kl)
+            per_tok = -(ratio * adv_tok[s : s + micro] - beta * kl)
             loss = ((per_tok * mask).sum(1) / mask.sum(1).clamp(min=1)).sum() / g
             loss.backward()
             total_loss += loss.detach().item()
