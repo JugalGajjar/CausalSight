@@ -1,0 +1,38 @@
+# Stage 2 run A, second seed (identical to stage2_csr.yaml except seed).
+model: Qwen/Qwen2.5-VL-3B-Instruct
+init_adapter: /content/drive/MyDrive/causalsight/runs/stage1/adapter   # merged in; reference = SFT model
+data_file: /content/CausalSight/data/subsets/rl_balanced_1500_options.jsonl   # per-option yes/no records with their own GT chain
+prompt_style: chain
+instr_in_user: true
+n_frames: 16
+group_size: 8
+micro_batch: 8                    # one policy pass per step; pilot ran at 4, drop back if OOM
+max_new_tokens: 640                # SFT chains: explanatory p90 468, max 549 tokens
+temperature: 1.0
+lr: 1.0e-5
+kl_beta: 0.04
+kl_log_ratio_clip: 5.0
+max_grad_norm: 1.0
+steps: 1000                       # ~55 s/step expected -> ~15 h
+save_every: 50
+log_every: 1
+seed: 1
+dtype: bfloat16
+attn: sdpa
+gradient_checkpointing: true
+lora:
+  r: 64
+  alpha: 128
+  dropout: 0.05
+  targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+rewards:                          # R = w_o R_out + w_f R_fmt + w_g R_ground + w_n R_nec + w_p R_proc
+  outcome: 1.0
+  format_chain: 0.5
+  grounding: 0.5
+  necessity: 0.5
+  process: 0.5
+necessity_frames: 8               # verifier context uses 8 of the 16 frames (halves its cost)
+necessity:
+  delta: 0.1                      # step is necessary if removing it drops p(gold) by more than delta
+  eps: 0.02                       # step is padding if the drop is <= eps
+  gamma: 0.5
