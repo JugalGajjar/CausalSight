@@ -22,3 +22,18 @@ Step-level credit at weight 1.0 (run B) harmed everything (training reward fell,
 clip): the step-credit term needs a smaller weight, not abandonment, but that is an open item.
 Still needed: outcome+format-only chain GRPO from the same checkpoint (does any of run A's gain come
 from the process rewards?), and a second seed of run A.
+
+## Ablation: outcome + format only chain GRPO (`chainrl3b`), 2026-09-28
+
+| model | descr | expl | pred | cf | obj_iou | acc vs SFT (paired) | obj_iou vs SFT (paired) |
+|---|---|---|---|---|---|---|---|
+| SFT | 0.888 | 0.902 | 0.820 | 0.805 | 0.679 | - | - |
+| chain GRPO o+f | 0.924 | 0.947 | 0.832 | 0.801 | 0.654 | +0.020 [+0.011, +0.030] | -0.027 [-0.031, -0.023] |
+| CSR run A | 0.900 | 0.945 | 0.828 | 0.807 | 0.668 | +0.019 [+0.010, +0.028] | -0.010 [-0.014, -0.006] |
+
+Run A vs chain GRPO, paired: accuracy -0.002 [-0.009, +0.006]; obj_iou +0.017 [+0.013, +0.021].
+Reading: the accuracy gain from RL on chains comes entirely from outcome+format; the process rewards
+(grounding, necessity, process) add no accuracy. Their measurable effect is on grounding: plain RL erodes
+box IoU by 0.027 relative to SFT, and the process rewards recover 0.017 of that. Faithfulness gaps are
+unchanged across the three chain models. Next: run C (step credit 0.3) to test whether step-level credit
+protects grounding further without run B's degradation; then a second seed of the final method.
