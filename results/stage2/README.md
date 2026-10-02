@@ -37,3 +37,11 @@ Reading: the accuracy gain from RL on chains comes entirely from outcome+format;
 box IoU by 0.027 relative to SFT, and the process rewards recover 0.017 of that. Faithfulness gaps are
 unchanged across the three chain models. Next: run C (step credit 0.3) to test whether step-level credit
 protects grounding further without run B's degradation; then a second seed of the final method.
+
+## Run C: step credit 0.3 (`csr3b_sc03`), 2026-10-02
+
+Stable training (KL ~0.05, no degradation) but no benefit: accuracy equal to run A (-0.003 [-0.011, +0.006]),
+grounding below run A (-0.011 [-0.015, -0.007]) and only marginally above plain chain GRPO (+0.006
+[+0.001, +0.011]); track gap 0.46, the lowest of the chain models. Step-level credit is a negative result at
+both weights tested (1.0 harms, 0.3 is neutral-to-worse). Final method = run A (sequence-level CSR).
+Replication plan: second seeds of run A and of chain GRPO o+f, the pair behind the grounding-protection claim.

@@ -1,0 +1,94 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/stage2_stepcredit_soft/adapter",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "chain",
+  "max_new_tokens": 640,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 24,
+  "mask": "track_random",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 2409,
+  "seconds": 3452.4,
+  "overall": 0.8493150684931506,
+  "by_type": {
+    "descriptive": {
+      "n": 207,
+      "per_question": 0.8405797101449275
+    },
+    "explanatory": {
+      "n": 224,
+      "n_options": 819,
+      "per_option": 0.9328449328449329,
+      "per_question": 0.8303571428571429
+    },
+    "predictive": {
+      "n": 250,
+      "n_options": 500,
+      "per_option": 0.824,
+      "per_question": 0.66
+    },
+    "counterfactual": {
+      "n": 250,
+      "n_options": 883,
+      "per_option": 0.7882219705549264,
+      "per_question": 0.38
+    },
+    "inferential(per_question)": {
+      "n": 724,
+      "per_question": 0.6160220994475138
+    }
+  },
+  "chain": {
+    "counterfactual": {
+      "n": 883,
+      "format_rate": 0.9966024915062288,
+      "mean_steps": 4.001132502831257,
+      "ground_st": 0.2996625149966678,
+      "ground_spatial": 0.48176123126030446,
+      "ground_recall": 0.5677556818181818,
+      "t_offset": 7.172784090909091
+    },
+    "descriptive": {
+      "n": 207,
+      "format_rate": 1.0,
+      "mean_steps": 2.0917874396135265,
+      "ground_st": 0.31066769617341594,
+      "ground_spatial": 0.5801368226243337,
+      "ground_recall": 0.677938808373591,
+      "t_offset": 4.385668276972625
+    },
+    "explanatory": {
+      "n": 819,
+      "format_rate": 0.978021978021978,
+      "mean_steps": 5.448107448107448,
+      "ground_st": 0.22788135892225428,
+      "ground_spatial": 0.507976019686709,
+      "ground_recall": 0.5999702752511742,
+      "t_offset": 3.138377623209084
+    },
+    "predictive": {
+      "n": 500,
+      "format_rate": 1.0,
+      "mean_steps": 2.998,
+      "ground_st": 0.37963558260049607,
+      "ground_spatial": 0.5715161972479323,
+      "ground_recall": 0.6713333333333332,
+      "t_offset": 5.666
+    },
+    "ALL": {
+      "n": 2409,
+      "format_rate": 0.9912826899128269,
+      "mean_steps": 4.12079701120797,
+      "ground_st": 0.2932839137780312,
+      "ground_spatial": 0.5178748308983774,
+      "ground_recall": 0.6097994934992422,
+      "t_offset": 5.2624471564170054
+    }
+  }
+}
