@@ -38,3 +38,6 @@ data/frames/
 
 # training runs (adapters, logs) live on Drive; keep local copies out of git
 runs/
+
+# paper drafts stay private
+paper/
