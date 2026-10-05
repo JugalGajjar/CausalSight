@@ -10,10 +10,9 @@ def load_backend(model: str, **kw) -> VLMBackend:
         from causalsight.models.dummy import DummyBackend
 
         return DummyBackend(**kw)
-    from pathlib import Path
 
-    if "qwen" in model.lower() or (Path(model) / "adapter_config.json").exists():
-        from causalsight.models.qwen_vl import QwenVLBackend
+    # Every real model we evaluate is a Qwen2.5-VL checkpoint (ours, or published ones built on it:
+    # VideoRFT-3B, VideoThinker-R1-3B, Video-R1-7B), or one of our LoRA adapters on top of one.
+    from causalsight.models.qwen_vl import QwenVLBackend
 
-        return QwenVLBackend(model, **kw)
-    raise ValueError(f"no backend for model id {model!r}")
+    return QwenVLBackend(model, **kw)

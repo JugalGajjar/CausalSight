@@ -45,3 +45,8 @@ grounding below run A (-0.011 [-0.015, -0.007]) and only marginally above plain 
 [+0.001, +0.011]); track gap 0.46, the lowest of the chain models. Step-level credit is a negative result at
 both weights tested (1.0 harms, 0.3 is neutral-to-worse). Final method = run A (sequence-level CSR).
 Replication plan: second seeds of run A and of chain GRPO o+f, the pair behind the grounding-protection claim.
+
+## CSR seed 1 (`csr3b_s1`), 2026-10-04: replicates seed 0
+Accuracy seed1−seed0 −0.005 [−0.014, +0.004]; obj_iou −0.003 [−0.007, +0.002]. Against the same
+comparators: seed1−SFT accuracy +0.014 [+0.003, +0.024]; seed1−chainGRPO(s0) obj_iou +0.014 [+0.010, +0.019].
+The grounding-protection and accuracy claims hold under a second seed.
