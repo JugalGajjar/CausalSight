@@ -39,6 +39,17 @@ def resolve_init_adapters(adapter_dir: Path, explicit: str | None = None) -> lis
     raise FileNotFoundError(f"{adapter_dir} was trained on top of {init}, which was not found (tried {[str(c) for c in cands]}); pass --init-adapter")
 
 
+STOCK_BY_HIDDEN = {1536: "Qwen/Qwen2.5-VL-3B-Instruct", 2048: "Qwen/Qwen2.5-VL-3B-Instruct", 3584: "Qwen/Qwen2.5-VL-7B-Instruct", 5120: "Qwen/Qwen2.5-VL-32B-Instruct", 8192: "Qwen/Qwen2.5-VL-72B-Instruct"}
+
+
+def stock_processor_id(config) -> str:
+    text_cfg = getattr(config, "text_config", config)
+    hidden = getattr(text_cfg, "hidden_size", None)
+    if hidden not in STOCK_BY_HIDDEN:
+        raise ValueError(f"unknown Qwen2.5-VL size (hidden_size={hidden}); add it to STOCK_BY_HIDDEN")
+    return STOCK_BY_HIDDEN[hidden]
+
+
 class QwenVLBackend(VLMBackend):
     def __init__(self, model_id: str, device: str | None = None, dtype: str = "bfloat16", max_pixels: int | None = None, init_adapter: str | None = None, **_) -> None:
         """`max_pixels=None` builds video inputs exactly as the trainers do (480x320 frames -> 504x336,
@@ -63,7 +74,10 @@ class QwenVLBackend(VLMBackend):
             model = PeftModel.from_pretrained(model, model_id).merge_and_unload()
             print(f"loaded adapter {model_id} on {base_id} (merged)")
         self.model = model.to(self.device).eval()
-        self.processor = AutoProcessor.from_pretrained(base_id)
+        # Always use the stock Qwen2.5-VL processor for the checkpoint's size, so every model (ours and
+        # published ones) sees identical preprocessing; checkpoints ship divergent or broken
+        # preprocessor_config.json files (VideoRFT caps pixels, Video-R1-7B lacks image_processor_type).
+        self.processor = AutoProcessor.from_pretrained(stock_processor_id(model.config))
         self.processor.tokenizer.padding_side = "left"  # required for batched generation
         self.max_pixels = max_pixels
 
