@@ -1,0 +1,44 @@
+{
+  "model": "Video-R1/Video-R1-7B",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 16,
+  "mask": "none",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 1000,
+  "seconds": 1659.4,
+  "overall": 0.583,
+  "by_type": {
+    "descriptive": {
+      "n": 250,
+      "per_question": 0.78
+    },
+    "explanatory": {
+      "n": 250,
+      "per_question": 0.556,
+      "per_option": 0.8230088495575221
+    },
+    "predictive": {
+      "n": 250,
+      "per_question": 0.628,
+      "per_option": 0.686
+    },
+    "counterfactual": {
+      "n": 250,
+      "per_question": 0.368,
+      "per_option": 0.7180067950169875
+    },
+    "inferential(per_question)": {
+      "n": 750,
+      "per_question": 0.5173333333333333
+    }
+  }
+}

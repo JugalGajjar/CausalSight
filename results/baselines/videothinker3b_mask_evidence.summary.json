@@ -1,0 +1,44 @@
+{
+  "model": "Falconss1/VideoThinker-R1-3B",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 24,
+  "mask": "evidence",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 1000,
+  "seconds": 572.0,
+  "overall": 0.56,
+  "by_type": {
+    "descriptive": {
+      "n": 250,
+      "per_question": 0.728
+    },
+    "explanatory": {
+      "n": 250,
+      "per_question": 0.26,
+      "per_option": 0.7323008849557522
+    },
+    "predictive": {
+      "n": 250,
+      "per_question": 0.744,
+      "per_option": 0.75
+    },
+    "counterfactual": {
+      "n": 250,
+      "per_question": 0.508,
+      "per_option": 0.797281993204983
+    },
+    "inferential(per_question)": {
+      "n": 750,
+      "per_question": 0.504
+    }
+  }
+}

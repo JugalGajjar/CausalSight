@@ -1,0 +1,44 @@
+{
+  "model": "QiWang98/VideoRFT-3B",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 24,
+  "mask": "track_random",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 931,
+  "seconds": 1221.4,
+  "overall": 0.3941997851772288,
+  "by_type": {
+    "descriptive": {
+      "n": 207,
+      "per_question": 0.7246376811594203
+    },
+    "explanatory": {
+      "n": 224,
+      "per_question": 0.08035714285714286,
+      "per_option": 0.5396825396825397
+    },
+    "predictive": {
+      "n": 250,
+      "per_question": 0.6,
+      "per_option": 0.686
+    },
+    "counterfactual": {
+      "n": 250,
+      "per_question": 0.196,
+      "per_option": 0.594563986409966
+    },
+    "inferential(per_question)": {
+      "n": 724,
+      "per_question": 0.29972375690607733
+    }
+  }
+}
