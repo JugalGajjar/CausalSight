@@ -38,10 +38,12 @@ PLAIN_SYSTEM = (
 )
 
 
-def build_messages(rec: dict, frames, prompt_style: str, instr_in_user: bool = True) -> list[dict]:
+def build_messages(rec: dict, frames, prompt_style: str, instr_in_user: bool = True, encoder=None) -> list[dict]:
     """`instr_in_user`: put the format instruction after the question in the user turn instead of a system
     prompt; small instruct models follow user-turn instructions far more reliably."""
     instr = SYSTEM_PROMPT if prompt_style == "chain" else PLAIN_SYSTEM
+    if encoder is not None:
+        return encoder.messages(frames, rec["problem"] + "\n" + instr) if instr_in_user else encoder.messages(frames, rec["problem"], system=instr)
     if instr_in_user:
         return [{"role": "user", "content": [{"type": "video", "video": frames}, {"type": "text", "text": rec["problem"] + "\n" + instr}]}]
     return [
@@ -54,16 +56,17 @@ class GRPOTrainer:
     def __init__(self, cfg: dict, data_root: Path, out: Path, resume: bool) -> None:
         import torch
         from peft import LoraConfig, get_peft_model
-        from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
+        from causalsight.train.encoders import make_encoder
 
         self.cfg = cfg
         self.out = out
         out.mkdir(parents=True, exist_ok=True)
         self.device = cfg.get("device") or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[cfg.get("dtype", "bfloat16")]
-        self.processor = AutoProcessor.from_pretrained(cfg["model"])
-        self.processor.tokenizer.padding_side = "left"
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(cfg["model"], torch_dtype=self.dtype, attn_implementation=cfg.get("attn", "sdpa"))
+        self.enc = make_encoder(cfg["model"])
+        model = self.enc.load_model(cfg["model"], self.dtype, cfg.get("attn", "sdpa"))
+        self.processor = self.enc.processor
         if cfg.get("init_adapter"):
             # Stage 2 starts from the Stage 1 SFT adapter: merge it into the weights, so the reference
             # model (RL adapter disabled) *is* the SFT model, which also serves as the necessity verifier
@@ -77,7 +80,7 @@ class GRPOTrainer:
         lora = cfg["lora"]
         self.model = get_peft_model(
             model,
-            LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora.get("dropout", 0.0), target_modules=lora["targets"], task_type="CAUSAL_LM"),
+            LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora.get("dropout", 0.0), target_modules=lora.get("targets") or self.enc.lora_default_targets, task_type="CAUSAL_LM"),
         ).to(self.device)
         self.model.print_trainable_parameters()
         self.opt = torch.optim.AdamW([p for p in self.model.parameters() if p.requires_grad], lr=cfg["lr"], weight_decay=0.0)
@@ -128,12 +131,8 @@ class GRPOTrainer:
     # ---------------------------------------------------------------- core
 
     def _inputs(self, rec: dict, frames):
-        from qwen_vl_utils import process_vision_info
-
-        messages = build_messages(rec, frames, self.cfg.get("prompt_style", "plain"), self.cfg.get("instr_in_user", True))
-        text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        _imgs, videos = process_vision_info(messages)
-        return self.processor(text=[text], videos=videos, padding=True, return_tensors="pt").to(self.device)
+        messages = build_messages(rec, frames, self.cfg.get("prompt_style", "plain"), self.cfg.get("instr_in_user", True), encoder=self.enc)
+        return self.enc.encode([self.enc.prompt_text(messages)], [frames], self.device)
 
     def _generate(self, inputs, g: int):
         import torch
@@ -163,12 +162,7 @@ class GRPOTrainer:
         # keep everything up to the last non-pad token (an EOS may equal pad; handle via first-pad cut)
         ids = torch.cat([prompt_ids, completions], dim=1)
         mask = torch.cat([prompt_mask, comp_mask], dim=1)
-        kw = {"input_ids": ids, "attention_mask": mask}
-        if "pixel_values_videos" in inputs:
-            kw["pixel_values_videos"] = inputs["pixel_values_videos"].repeat(g, 1)
-            kw["video_grid_thw"] = inputs["video_grid_thw"].repeat(g, 1)
-        if "second_per_grid_ts" in inputs:
-            kw["second_per_grid_ts"] = inputs["second_per_grid_ts"].repeat(g)
+        kw = {"input_ids": ids, "attention_mask": mask, **self.enc.vision_kwargs(inputs, g)}
         ctx = self.model.disable_adapter() if not use_adapter else _nullcontext()
         with ctx, (torch.no_grad() if not use_adapter else _nullcontext()):
             logits = self.model(**kw).logits

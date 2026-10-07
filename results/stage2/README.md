@@ -50,3 +50,14 @@ Replication plan: second seeds of run A and of chain GRPO o+f, the pair behind t
 Accuracy seed1−seed0 −0.005 [−0.014, +0.004]; obj_iou −0.003 [−0.007, +0.002]. Against the same
 comparators: seed1−SFT accuracy +0.014 [+0.003, +0.024]; seed1−chainGRPO(s0) obj_iou +0.014 [+0.010, +0.019].
 The grounding-protection and accuracy claims hold under a second seed.
+
+## Chain GRPO seed 1 (`chainrl3b_s1`), 2026-10-07: the grounding-protection claim does not survive
+Seed agreement for chain GRPO: accuracy −0.001 [−0.010, +0.008], but obj_iou +0.015 [+0.010, +0.019]
+(0.657 → 0.672). That between-seed spread equals the CSR−chainGRPO effect measured at seed 0 (+0.017).
+All four cross-pairs: s0/s0 +0.017, s1/s1 −0.000, s0/s1 +0.003, s1/s0 +0.014; pooled per-item mean
++0.008 [+0.005, +0.012]. The paired-over-items interval ignores seed variance, which is the dominant term;
+with two seeds per arm the process rewards' effect on grounding is indistinguishable from noise (≤ 0.01 IoU).
+Accuracy: no effect in any pair. Revised Stage 2 claim: RL on grounded chains (any reward set tested)
+adds +1.4 to +2.0 points over SFT, replicated across four runs, with grounding within 0.03 IoU of SFT and
+faithfulness gaps unchanged; the grounding/necessity/process rewards add nothing measurable; step-level
+credit is neutral (0.3) or harmful (1.0).

@@ -87,19 +87,21 @@ class SFTTrainer:
     def __init__(self, cfg: dict, data_root: Path, out: Path, resume: bool) -> None:
         import torch
         from peft import LoraConfig, get_peft_model
-        from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
+
+        from causalsight.train.encoders import make_encoder
 
         self.cfg, self.out, self.data_root = cfg, out, data_root
         out.mkdir(parents=True, exist_ok=True)
         self.device = cfg.get("device") or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
         self.dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[cfg.get("dtype", "bfloat16")]
-        self.processor = AutoProcessor.from_pretrained(cfg["model"])
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(cfg["model"], torch_dtype=self.dtype, attn_implementation=cfg.get("attn", "sdpa"))
+        self.enc = make_encoder(cfg["model"])
+        model = self.enc.load_model(cfg["model"], self.dtype, cfg.get("attn", "sdpa"))
+        self.processor = self.enc.processor
         if cfg.get("gradient_checkpointing", True):
             model.gradient_checkpointing_enable()
             model.enable_input_require_grads()
         lora = cfg["lora"]
-        self.model = get_peft_model(model, LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora.get("dropout", 0.0), target_modules=lora["targets"], task_type="CAUSAL_LM")).to(self.device)
+        self.model = get_peft_model(model, LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora.get("dropout", 0.0), target_modules=lora.get("targets") or self.enc.lora_default_targets, task_type="CAUSAL_LM")).to(self.device)
         self.model.print_trainable_parameters()
         self.records = load_records(data_root / cfg["data_file"])
         self.rng = random.Random(cfg.get("seed", 0))
@@ -142,15 +144,7 @@ class SFTTrainer:
 
     def _encode(self, rec: dict, frames, response: str):
         """Returns processor inputs for prompt+response and the prompt length (tokens), so labels can mask the prompt."""
-        from qwen_vl_utils import process_vision_info
-
-        user = {"role": "user", "content": [{"type": "video", "video": frames}, {"type": "text", "text": rec["problem"] + "\n" + SYSTEM_PROMPT}]}
-        prompt_text = self.processor.apply_chat_template([user], tokenize=False, add_generation_prompt=True)
-        full_text = prompt_text + response + self.processor.tokenizer.eos_token
-        _imgs, videos = process_vision_info([user])
-        full = self.processor(text=[full_text], videos=videos, padding=True, return_tensors="pt").to(self.device)
-        prompt = self.processor(text=[prompt_text], videos=videos, padding=True, return_tensors="pt")
-        return full, int(prompt["input_ids"].shape[1])
+        return self.enc.full_inputs(frames, rec["problem"] + "\n" + SYSTEM_PROMPT, response, self.device)
 
     def _token_logprobs(self, inputs, prompt_len: int):
         import torch

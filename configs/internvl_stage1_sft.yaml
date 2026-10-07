@@ -1,0 +1,21 @@
+# InternVL3-2B, Stage 1: triplet-chain SFT with bridge loss. Same recipe as configs/stage1_sft.yaml.
+model: OpenGVLab/InternVL3-2B-hf
+data_file: sft_subset.jsonl
+n_frames: 16
+epochs: 1
+grad_accum: 8
+lr: 0.0001
+warmup: 30
+max_grad_norm: 1.0
+bridge_weight: 0.2
+bridge_prob: 0.5
+save_every: 100
+log_every: 5
+seed: 0
+dtype: bfloat16
+attn: sdpa
+gradient_checkpointing: true
+lora:
+  r: 64
+  alpha: 128
+  dropout: 0.05

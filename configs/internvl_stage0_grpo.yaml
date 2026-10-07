@@ -1,0 +1,29 @@
+# InternVL3-2B, Stage 0: outcome-only GRPO, balanced mix. Same recipe as configs/stage0_grpo.yaml;
+# LoRA on the language model only (encoder default regex).
+model: OpenGVLab/InternVL3-2B-hf
+data_file: rl_subset.jsonl
+prompt_style: plain
+instr_in_user: true
+n_frames: 16
+group_size: 8
+micro_batch: 8
+max_new_tokens: 256
+temperature: 1.0
+lr: 1.0e-05
+kl_beta: 0.04
+kl_log_ratio_clip: 5.0
+max_grad_norm: 1.0
+steps: 1500
+save_every: 50
+log_every: 1
+seed: 0
+dtype: bfloat16
+attn: sdpa
+gradient_checkpointing: true
+lora:
+  r: 64
+  alpha: 128
+  dropout: 0.05
+rewards:
+  outcome_lenient: 1.0
+  format: 0.5
