@@ -4,41 +4,41 @@
   "split": "validation",
   "blind": false,
   "instr": "plain",
-  "max_new_tokens": 384,
+  "max_new_tokens": 768,
   "mc": "multi",
   "max_pixels": null,
-  "batch_size": 24,
+  "batch_size": 16,
   "mask": "none",
   "chains": "/content/data/evalpack/chains.jsonl",
   "per_type": 250,
   "seed": 0,
   "max_frames": 16,
   "n": 1000,
-  "seconds": 1235.4,
-  "overall": 0.432,
+  "seconds": 1924.0,
+  "overall": 0.452,
   "by_type": {
     "descriptive": {
       "n": 250,
-      "per_question": 0.76
+      "per_question": 0.752
     },
     "explanatory": {
       "n": 250,
-      "per_question": 0.12,
-      "per_option": 0.543141592920354
+      "per_question": 0.084,
+      "per_option": 0.5420353982300885
     },
     "predictive": {
       "n": 250,
-      "per_question": 0.656,
-      "per_option": 0.71
+      "per_question": 0.712,
+      "per_option": 0.752
     },
     "counterfactual": {
       "n": 250,
-      "per_question": 0.192,
-      "per_option": 0.5764439411098528
+      "per_question": 0.26,
+      "per_option": 0.6262740656851642
     },
     "inferential(per_question)": {
       "n": 750,
-      "per_question": 0.32266666666666666
+      "per_question": 0.352
     }
   }
 }
