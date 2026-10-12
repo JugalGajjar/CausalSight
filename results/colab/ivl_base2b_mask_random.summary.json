@@ -1,0 +1,44 @@
+{
+  "model": "OpenGVLab/InternVL3-2B-hf",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "none",
+  "max_new_tokens": 64,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "random",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 1000,
+  "seconds": 313.8,
+  "overall": 0.614,
+  "by_type": {
+    "descriptive": {
+      "n": 250,
+      "per_question": 0.788
+    },
+    "explanatory": {
+      "n": 250,
+      "per_question": 0.48,
+      "per_option": 0.827433628318584
+    },
+    "predictive": {
+      "n": 250,
+      "per_question": 0.78,
+      "per_option": 0.804
+    },
+    "counterfactual": {
+      "n": 250,
+      "per_question": 0.408,
+      "per_option": 0.7383918459796149
+    },
+    "inferential(per_question)": {
+      "n": 750,
+      "per_question": 0.556
+    }
+  }
+}

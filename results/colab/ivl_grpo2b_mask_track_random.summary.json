@@ -1,0 +1,44 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/internvl_stage0/adapter",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "track_random",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 931,
+  "seconds": 2042.7,
+  "overall": 0.5316863587540279,
+  "by_type": {
+    "descriptive": {
+      "n": 207,
+      "per_question": 0.7584541062801933
+    },
+    "explanatory": {
+      "n": 224,
+      "per_question": 0.3482142857142857,
+      "per_option": 0.7142857142857143
+    },
+    "predictive": {
+      "n": 250,
+      "per_question": 0.776,
+      "per_option": 0.848
+    },
+    "counterfactual": {
+      "n": 250,
+      "per_question": 0.264,
+      "per_option": 0.6885617214043035
+    },
+    "inferential(per_question)": {
+      "n": 724,
+      "per_question": 0.46685082872928174
+    }
+  }
+}
