@@ -37,7 +37,5 @@ def load_benchmark(name: str, root: Path) -> Benchmark:
     if name == "causalvqa":
         from causalsight.eval.benchmarks.causalvqa import CausalVQABenchmark
 
-        return CausalVQABenchmark(root)
-    raise NotImplementedError(
-        f"{name}: MMVU, Video-MME, TempCompass and Video-Holmes are run through lmms-eval for now; see notes/PLAN.md Phase B"
-    )
+        return CausalVQABenchmark(root)  # mc_mode is set by the harness
+    raise NotImplementedError(f"{name}: not implemented (clevrer, causalvqa available)")

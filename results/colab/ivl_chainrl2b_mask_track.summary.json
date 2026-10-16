@@ -1,0 +1,94 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/internvl_stage2_outcome_only/adapter",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "chain",
+  "max_new_tokens": 640,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 24,
+  "mask": "track",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 2409,
+  "seconds": 3823.2,
+  "overall": 0.39684516396845165,
+  "by_type": {
+    "descriptive": {
+      "n": 207,
+      "per_question": 0.18357487922705315
+    },
+    "explanatory": {
+      "n": 224,
+      "n_options": 819,
+      "per_option": 0.28327228327228327,
+      "per_question": 0.022321428571428572
+    },
+    "predictive": {
+      "n": 250,
+      "n_options": 500,
+      "per_option": 0.472,
+      "per_question": 0.024
+    },
+    "counterfactual": {
+      "n": 250,
+      "n_options": 883,
+      "per_option": 0.5096262740656852,
+      "per_question": 0.0
+    },
+    "inferential(per_question)": {
+      "n": 724,
+      "per_question": 0.015193370165745856
+    }
+  },
+  "chain": {
+    "counterfactual": {
+      "n": 883,
+      "format_rate": 0.9750849377123443,
+      "mean_steps": 3.8618346545866364,
+      "ground_st": 0.10074373584949191,
+      "ground_spatial": 0.1820971210033752,
+      "ground_recall": 0.1248548199767712,
+      "t_offset": 7.510168132293567
+    },
+    "descriptive": {
+      "n": 207,
+      "format_rate": 0.966183574879227,
+      "mean_steps": 2.0096618357487923,
+      "ground_st": 0.10249970838138367,
+      "ground_spatial": 0.28182147707500527,
+      "ground_recall": 0.28583333333333333,
+      "t_offset": 11.8525
+    },
+    "explanatory": {
+      "n": 819,
+      "format_rate": 0.9548229548229549,
+      "mean_steps": 4.241758241758242,
+      "ground_st": 0.08334769742009765,
+      "ground_spatial": 0.16858538772053983,
+      "ground_recall": 0.10752039946413348,
+      "t_offset": 12.441755977753422
+    },
+    "predictive": {
+      "n": 500,
+      "format_rate": 0.986,
+      "mean_steps": 2.984,
+      "ground_st": 0.0913068142948128,
+      "ground_spatial": 0.15142638774106343,
+      "ground_recall": 0.07167004732927652,
+      "t_offset": 5.703515889114267
+    },
+    "ALL": {
+      "n": 2409,
+      "format_rate": 0.9696969696969697,
+      "mean_steps": 3.6496471564964716,
+      "ground_st": 0.09307896278790596,
+      "ground_spatial": 0.1796390834557849,
+      "ground_recall": 0.1216099967384214,
+      "t_offset": 9.151558762774515
+    }
+  }
+}

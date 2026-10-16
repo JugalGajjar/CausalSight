@@ -61,3 +61,16 @@ Accuracy: no effect in any pair. Revised Stage 2 claim: RL on grounded chains (a
 adds +1.4 to +2.0 points over SFT, replicated across four runs, with grounding within 0.03 IoU of SFT and
 faithfulness gaps unchanged; the grounding/necessity/process rewards add nothing measurable; step-level
 credit is neutral (0.3) or harmful (1.0).
+
+## Third chain GRPO seed and the no-necessity ablation, 2026-10-13
+| arm | seeds | accuracy (per-option items) | obj_iou |
+|---|---|---|---|
+| SFT | 1 | 0.851 | 0.684 |
+| chain GRPO (outcome+format) | 3 | 0.870 ± 0.001 | 0.666 ± 0.008 |
+| CSR (all process rewards) | 2 | 0.867 ± 0.004 | 0.673 ± 0.002 |
+| CSR without necessity | 1 | 0.866 | 0.644 |
+
+Between-seed statistics settle it: RL on chains adds +1.9 points over SFT with negligible seed variance;
+the process rewards change neither accuracy nor grounding beyond seed noise (0.673 vs 0.666 ± 0.008);
+dropping the necessity term gives the lowest grounding of the three arms (single seed). Reported as a
+controlled negative result for step-aware rewards at this scale.

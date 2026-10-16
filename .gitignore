@@ -41,3 +41,6 @@ runs/
 
 # paper drafts stay private
 paper/
+
+# causalvqa raw data and packs
+data/raw/causalvqa/

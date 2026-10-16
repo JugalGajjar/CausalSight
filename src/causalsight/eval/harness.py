@@ -36,7 +36,7 @@ from causalsight.train.grpo import PLAIN_SYSTEM
 
 INSTR = {"none": "", "plain": PLAIN_SYSTEM, "chain": SYSTEM_PROMPT}
 
-N_TOTAL_FRAMES = {"clevrer": 128}
+N_TOTAL_FRAMES = {"clevrer": 128, "causalvqa": 10_000}  # causalvqa: no evidence regions; masking modes unused  # other benchmarks: masking modes are not supported (no evidence annotations)
 
 
 def chain_metrics(raw: str, gt_regions: list, iou_thr: float = 0.5, t_tol: int = 8) -> dict:
@@ -170,6 +170,7 @@ def run(
                     frame_cache.clear()
                 if frames_dir:  # pre-extracted frames (eval pack); no video decoding
                     frame_cache[item.video_path] = load_frames(frames_dir, {"frames": f"frames/{item.video_path.stem}"}, max_frames)
+                    frame_cache[item.video_path] = [f if max(f.size) <= 640 else f.resize((640 * f.width // max(f.size), 640 * f.height // max(f.size))) for f in frame_cache[item.video_path]]
                 else:
                     frame_cache[item.video_path] = sample_frames(item.video_path, max_frames)
             frames = frame_cache[item.video_path]
@@ -226,7 +227,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description="CausalSight evaluation harness")
     p.add_argument("--model", required=True, help="HF model id, or 'dummy'")
     p.add_argument("--bench", required=True)
-    p.add_argument("--split", default="validation")
+    p.add_argument("--split", default=None, help="default: validation (clevrer) / debug (causalvqa)")
     p.add_argument("--root", type=Path, default=None, help="benchmark root (default data/raw/<bench>)")
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--blind", action="store_true", help="replace the video with black frames")
@@ -254,6 +255,8 @@ def main() -> None:
     p.add_argument("--out", type=Path, default=None)
     args = p.parse_args()
     root = args.root or Path("data/raw") / args.bench
+    if args.split is None:
+        args.split = "debug" if args.bench == "causalvqa" else "validation"
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,

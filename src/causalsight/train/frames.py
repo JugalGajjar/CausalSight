@@ -118,9 +118,30 @@ def build_eval_pack(root: Path, split: str, chains: Path, per_type: int, seed: i
     return manifest
 
 
+def build_causalvqa_pack(root: Path, out: Path, n_frames: int, max_side: int, workers: int) -> dict:
+    """Frames for the CausalVQA debug split (the only split with answers) plus its metadata, laid out so
+    `cs-eval --bench causalvqa --root <out> --frames-dir <out>` needs no videos."""
+    import csv
+    import shutil
+
+    src = root / "CausalVQA" / "debug"
+    dst = out / "CausalVQA" / "debug"
+    dst.mkdir(parents=True, exist_ok=True)
+    shutil.copy(src / "debug_metadata.csv", dst / "debug_metadata.csv")
+    with (src / "debug_metadata.csv").open(newline="") as f:
+        videos = sorted({row["renamed_video"] for row in csv.DictReader(f)})
+    jobs = [(str(src / "videos" / v), str(out / "frames" / Path(v).stem), n_frames, max_side) for v in videos]
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        list(ex.map(_extract, jobs))
+    manifest = {"benchmark": "causalvqa", "split": "debug", "videos": len(videos), "n_frames": n_frames, "max_side": max_side}
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    return manifest
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--eval-pack", action="store_true", help="build an evaluation pack instead of training frames")
+    ap.add_argument("--eval-pack", action="store_true", help="build a CLEVRER evaluation pack instead of training frames")
+    ap.add_argument("--causalvqa-pack", action="store_true", help="build the CausalVQA debug-split evaluation pack")
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="validation")
     ap.add_argument("--chains", type=Path, default=None)
@@ -134,6 +155,11 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args()
+    if a.causalvqa_pack:
+        m = build_causalvqa_pack(a.root, a.out, a.n_frames, a.max_side, a.workers)
+        print(json.dumps(m, indent=2))
+        print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+        return
     if a.eval_pack:
         m = build_eval_pack(a.root, a.split, a.chains, a.per_type, a.seed, a.out, a.n_frames, a.max_side, a.workers)
         print(json.dumps(m, indent=2))
