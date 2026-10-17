@@ -1,0 +1,57 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/stage0b/adapter",
+  "bench": "causalvqa",
+  "split": "debug",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 200,
+  "seconds": 124.1,
+  "overall": 0.515,
+  "by_type": {
+    "anticipation": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.4,
+      "paired_acc": 0.35
+    },
+    "counterfactual": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.525,
+      "paired_acc": 0.35
+    },
+    "descriptive": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.675,
+      "paired_acc": 0.5
+    },
+    "hypothetical": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.55,
+      "paired_acc": 0.3
+    },
+    "planning": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.425,
+      "paired_acc": 0.25
+    },
+    "ALL": {
+      "n_questions": 100,
+      "n_sets": 200,
+      "set_acc": 0.515,
+      "paired_acc": 0.35
+    }
+  }
+}

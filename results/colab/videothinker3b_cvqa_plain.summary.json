@@ -1,0 +1,57 @@
+{
+  "model": "Falconss1/VideoThinker-R1-3B",
+  "bench": "causalvqa",
+  "split": "debug",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 200,
+  "seconds": 193.8,
+  "overall": 0.475,
+  "by_type": {
+    "anticipation": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.45,
+      "paired_acc": 0.35
+    },
+    "counterfactual": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.45,
+      "paired_acc": 0.3
+    },
+    "descriptive": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.6,
+      "paired_acc": 0.4
+    },
+    "hypothetical": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.5,
+      "paired_acc": 0.3
+    },
+    "planning": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.375,
+      "paired_acc": 0.2
+    },
+    "ALL": {
+      "n_questions": 100,
+      "n_sets": 200,
+      "set_acc": 0.475,
+      "paired_acc": 0.31
+    }
+  }
+}
