@@ -1,0 +1,95 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/internvl_stage1/adapter",
+  "bench": "causalvqa",
+  "split": "debug",
+  "blind": true,
+  "instr": "chain",
+  "max_new_tokens": 640,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 1000,
+  "seconds": 1848.8,
+  "overall": 0.336,
+  "by_type": {
+    "anticipation": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.0,
+      "paired_acc": 0.0,
+      "per_option": 0.23
+    },
+    "counterfactual": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.05,
+      "paired_acc": 0.0,
+      "per_option": 0.34
+    },
+    "descriptive": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.0,
+      "paired_acc": 0.0,
+      "per_option": 0.33
+    },
+    "hypothetical": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.125,
+      "paired_acc": 0.1,
+      "per_option": 0.5
+    },
+    "planning": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.0,
+      "paired_acc": 0.0,
+      "per_option": 0.28
+    },
+    "ALL": {
+      "n_questions": 100,
+      "n_sets": 200,
+      "set_acc": 0.035,
+      "paired_acc": 0.02,
+      "per_option": 0.336
+    }
+  },
+  "chain": {
+    "anticipation": {
+      "n": 200,
+      "format_rate": 0.985,
+      "mean_steps": 2.685
+    },
+    "counterfactual": {
+      "n": 200,
+      "format_rate": 0.955,
+      "mean_steps": 3.955
+    },
+    "descriptive": {
+      "n": 200,
+      "format_rate": 0.925,
+      "mean_steps": 1.975
+    },
+    "hypothetical": {
+      "n": 200,
+      "format_rate": 0.89,
+      "mean_steps": 3.775
+    },
+    "planning": {
+      "n": 200,
+      "format_rate": 0.98,
+      "mean_steps": 3.255
+    },
+    "ALL": {
+      "n": 1000,
+      "format_rate": 0.947,
+      "mean_steps": 3.129
+    }
+  }
+}

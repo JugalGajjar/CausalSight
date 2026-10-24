@@ -1,0 +1,57 @@
+{
+  "model": "OpenGVLab/InternVL3-2B-hf",
+  "bench": "causalvqa",
+  "split": "debug",
+  "blind": false,
+  "instr": "none",
+  "max_new_tokens": 64,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 200,
+  "seconds": 76.3,
+  "overall": 0.41,
+  "by_type": {
+    "anticipation": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.275,
+      "paired_acc": 0.2
+    },
+    "counterfactual": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.35,
+      "paired_acc": 0.15
+    },
+    "descriptive": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.575,
+      "paired_acc": 0.45
+    },
+    "hypothetical": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.45,
+      "paired_acc": 0.35
+    },
+    "planning": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.4,
+      "paired_acc": 0.3
+    },
+    "ALL": {
+      "n_questions": 100,
+      "n_sets": 200,
+      "set_acc": 0.41,
+      "paired_acc": 0.29
+    }
+  }
+}
