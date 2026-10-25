@@ -138,9 +138,44 @@ def build_causalvqa_pack(root: Path, out: Path, n_frames: int, max_side: int, wo
     return manifest
 
 
+def build_nextqa_pack(root: Path, out: Path, pool: Path | None, val_ids: Path | None, n_frames: int, max_side: int, workers: int) -> dict:
+    """Frames for the NExT-QA training pool videos and/or the validation subset's videos, plus the
+    annotation files, laid out for `cs-eval --bench nextqa --root <out> --frames-dir <out>` and for the
+    pseudo-labeling pipeline. Video stems are the NExT-QA video ids."""
+    import shutil
+
+    from causalsight.eval.benchmarks.nextqa import load_rows, load_vidmap, video_path
+
+    vidmap = load_vidmap(root)
+    (out / "repo" / "dataset" / "nextqa").mkdir(parents=True, exist_ok=True)
+    for f in ("val.csv", "map_vid_vidorID.json"):
+        shutil.copy(root / "repo" / "dataset" / "nextqa" / f, out / "repo" / "dataset" / "nextqa" / f)
+    videos: set[str] = set()
+    if pool:
+        videos |= {json.loads(line)["video"] for line in pool.open()}
+        shutil.copy(pool, out / pool.name)
+    if val_ids:
+        ids = set(json.loads(val_ids.read_text()))
+        videos |= {r["video"] for r in load_rows(root, "val") if f"{r['video']}_{r['qid']}" in ids}
+        shutil.copy(val_ids, out / val_ids.name)
+    jobs = [(str(video_path(root, v, vidmap)), str(out / "frames" / v), n_frames, max_side) for v in sorted(videos)]
+    done = 0
+    with ProcessPoolExecutor(max_workers=workers) as ex:
+        for _ in ex.map(_extract, jobs):
+            done += 1
+            if done % 250 == 0:
+                print(f"  extracted {done}/{len(jobs)}", flush=True)
+    manifest = {"benchmark": "nextqa", "videos": len(videos), "n_frames": n_frames, "max_side": max_side}
+    (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    return manifest
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--eval-pack", action="store_true", help="build a CLEVRER evaluation pack instead of training frames")
+    ap.add_argument("--nextqa-pack", action="store_true", help="build the NExT-QA frames pack (train pool + val subset)")
+    ap.add_argument("--pool", type=Path, default=None)
+    ap.add_argument("--val-ids", type=Path, default=None)
     ap.add_argument("--causalvqa-pack", action="store_true", help="build the CausalVQA debug-split evaluation pack")
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="validation")
@@ -155,6 +190,11 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=8)
     a = ap.parse_args()
+    if a.nextqa_pack:
+        m = build_nextqa_pack(a.root, a.out, a.pool, a.val_ids, a.n_frames, a.max_side, a.workers)
+        print(json.dumps(m, indent=2))
+        print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+        return
     if a.causalvqa_pack:
         m = build_causalvqa_pack(a.root, a.out, a.n_frames, a.max_side, a.workers)
         print(json.dumps(m, indent=2))

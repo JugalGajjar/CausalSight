@@ -36,7 +36,7 @@ from causalsight.train.grpo import PLAIN_SYSTEM
 
 INSTR = {"none": "", "plain": PLAIN_SYSTEM, "chain": SYSTEM_PROMPT}
 
-N_TOTAL_FRAMES = {"clevrer": 128, "causalvqa": 10_000}  # causalvqa: no evidence regions; masking modes unused  # other benchmarks: masking modes are not supported (no evidence annotations)
+N_TOTAL_FRAMES = {"clevrer": 128, "causalvqa": 10_000, "nextqa": 10_000}  # causalvqa: no evidence regions; masking modes unused  # other benchmarks: masking modes are not supported (no evidence annotations)
 
 
 def chain_metrics(raw: str, gt_regions: list, iou_thr: float = 0.5, t_tol: int = 8) -> dict:
@@ -169,7 +169,7 @@ def run(
                 if len(frame_cache) > 2 * batch_size:
                     frame_cache.clear()
                 if frames_dir:  # pre-extracted frames (eval pack); no video decoding
-                    frame_cache[item.video_path] = load_frames(frames_dir, {"frames": f"frames/{item.video_path.stem}"}, max_frames)
+                    frame_cache[item.video_path] = load_frames(frames_dir, {"frames": f"frames/{item.meta.get('frames_key', item.video_path.stem)}"}, max_frames)
                     frame_cache[item.video_path] = [f if max(f.size) <= 640 else f.resize((640 * f.width // max(f.size), 640 * f.height // max(f.size))) for f in frame_cache[item.video_path]]
                 else:
                     frame_cache[item.video_path] = sample_frames(item.video_path, max_frames)
