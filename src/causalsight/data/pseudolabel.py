@@ -34,16 +34,35 @@ TEACHER_PROMPT = (
     "[n] entity: <noun phrase> | observation: <one sentence> | frame: <0-15>\n"
     "Question: {question}?\nOptions:\n{options}\nSteps:"
 )
-STEP_RE = re.compile(r"\[(\d+)\]\s*entity:\s*(.+?)\s*\|\s*observation:\s*(.+?)\s*\|\s*frame:\s*(\d+)", re.IGNORECASE)
+# Lenient: "[1] entity: X | observation: Y | frame: 3", "2. dog: the black dog | observation: ... | frame: 2",
+# "- the red cup | observation: ... | frame: 5"; the label before the first colon is ignored.
+STEP_RE = re.compile(
+    r"^\s*(?:\[\d+\]|\d+[.)]|-|\*)?\s*(?:[A-Za-z][\w /-]{0,30}:\s*)?(?P<entity>[^|\n]+?)\s*\|\s*observation:\s*(?P<obs>[^|\n]+?)\s*\|\s*frame:\s*(?P<frame>\d+)",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 def parse_teacher(text: str) -> list[dict]:
     steps = []
     for m in STEP_RE.finditer(text):
-        f = int(m.group(4))
-        if 0 <= f <= 15 and m.group(2).strip():
-            steps.append({"entity": m.group(2).strip().rstrip("."), "observation": m.group(3).strip(), "frame": f})
+        f = int(m.group("frame"))
+        ent = m.group("entity").strip().strip(".").strip()
+        if 0 <= f <= 15 and ent and len(ent) <= 80:
+            steps.append({"entity": ent, "observation": m.group("obs").strip(), "frame": f})
     return steps[:4]
+
+
+def reparse(path: Path) -> None:
+    """Re-run the parser over saved teacher outputs in place (the raw text is kept)."""
+    rows = [json.loads(line) for line in path.open()]
+    before = sum(bool(r["steps"]) for r in rows)
+    for r in rows:
+        r["steps"] = parse_teacher(r["teacher_raw"])
+    with path.open("w") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+    after = sum(bool(r["steps"]) for r in rows)
+    print(f"reparsed {len(rows)} rows: parsed {before} -> {after}; mean steps {sum(len(r['steps']) for r in rows) / max(1, after):.2f}")
 
 
 def teach(pool: Path, frames_root: Path, out: Path, model: str, batch_size: int, limit: int | None) -> None:
@@ -151,6 +170,8 @@ def main() -> None:
     t.add_argument("--model", default="Qwen/Qwen2.5-VL-7B-Instruct")
     t.add_argument("--batch-size", type=int, default=8)
     t.add_argument("--limit", type=int, default=None)
+    rp = sub.add_parser("reparse")
+    rp.add_argument("--teach", type=Path, required=True)
     g = sub.add_parser("ground")
     g.add_argument("--teach", type=Path, required=True)
     g.add_argument("--frames", type=Path, required=True)
@@ -162,6 +183,8 @@ def main() -> None:
     a = ap.parse_args()
     if a.cmd == "teach":
         teach(a.pool, a.frames, a.out, a.model, a.batch_size, a.limit)
+    elif a.cmd == "reparse":
+        reparse(a.teach)
     else:
         ground(a.teach, a.frames, a.out_sft, a.out_rl, a.detector, a.threshold, a.seed)
 
