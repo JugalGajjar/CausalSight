@@ -13,7 +13,7 @@ def load_records(path: Path | str) -> list[dict]:
 
 
 def load_frames(root: Path | str, rec: dict, n_frames: int | None = None) -> list[Image.Image]:
-    d = Path(root) / rec["frames"]
+    d = Path(rec["frames"]) if Path(rec["frames"]).is_absolute() else Path(root) / rec["frames"]
     files = sorted(d.glob("f*.jpg"))
     if not files:
         raise FileNotFoundError(f"no frames under {d} (video not in this frames dir / eval pack?)")
