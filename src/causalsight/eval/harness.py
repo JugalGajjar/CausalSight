@@ -100,6 +100,7 @@ def run(
     max_new_tokens: int = 64,
     mc: str = "multi",
     frames_dir: Path | None = None,
+    ids_file: Path | None = None,
     batch_size: int = 1,
     max_items: int | None = None,
     **model_kw,
@@ -108,6 +109,8 @@ def run(
     benchmark = load_benchmark(bench, root)
     if hasattr(benchmark, "mc_mode"):
         benchmark.mc_mode = mc
+    if ids_file and hasattr(benchmark, "ids"):
+        benchmark.ids = set(json.loads(Path(ids_file).read_text()))
     evidence = EvidenceIndex.from_chains(chains) if chains else None
     if mask != "none" and evidence is None:
         raise ValueError("--mask needs --chains <generated chains jsonl>")
@@ -246,6 +249,7 @@ def main() -> None:
     p.add_argument("--max-new-tokens", type=int, default=64, help="raise to ~384 for --instr plain/chain")
     p.add_argument("--mc", choices=["multi", "option"], default="multi", help="multiple choice as one letters prompt, or one yes/no item per option (chain models)")
     p.add_argument("--frames-dir", type=Path, default=None, help="eval pack dir with frames/<video>/fNN.jpg (skips video decoding)")
+    p.add_argument("--ids-file", type=Path, default=None, help="JSON list of question ids to evaluate (nextqa val subset)")
     p.add_argument("--batch-size", type=int, default=1, help="items per generate call; 16 on an 80 GB GPU, 1 on the Mac")
     p.add_argument("--max-items", type=int, default=None, help="pilot: stop after this many items of the stratified subset")
     p.add_argument("--max-frames", type=int, default=16)
@@ -260,7 +264,7 @@ def main() -> None:
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, batch_size=args.batch_size, max_items=args.max_items, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, ids_file=args.ids_file, batch_size=args.batch_size, max_items=args.max_items, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
     )
     print(json.dumps(summary, indent=2))
 

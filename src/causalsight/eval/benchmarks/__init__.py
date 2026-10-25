@@ -38,4 +38,8 @@ def load_benchmark(name: str, root: Path) -> Benchmark:
         from causalsight.eval.benchmarks.causalvqa import CausalVQABenchmark
 
         return CausalVQABenchmark(root)  # mc_mode is set by the harness
+    if name == "nextqa":
+        from causalsight.eval.benchmarks.nextqa import NextQABenchmark
+
+        return NextQABenchmark(root)
     raise NotImplementedError(f"{name}: not implemented (clevrer, causalvqa available)")
