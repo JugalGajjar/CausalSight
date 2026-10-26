@@ -167,14 +167,15 @@ class SFTTrainer:
         import torch
 
         frames = load_frames(self.data_root, rec, self.cfg.get("n_frames"))
-        chain = TripletChain.from_json(json.dumps(rec["chain"]))
+        use_bridge = self.cfg.get("bridge_weight", 0.0) > 0 and "chain" in rec
+        chain = TripletChain.from_json(json.dumps(rec["chain"])) if use_bridge else None
         response = rec["response"]
         inputs, plen = self._encode(rec, frames, response)
         lp, _ = self._token_logprobs(inputs, plen)
         nll = -lp.mean()
         loss = nll
         stats = {"nll": nll.item()}
-        if self.rng.random() < self.cfg.get("bridge_prob", 0.5) and self.cfg.get("bridge_weight", 0.0) > 0:
+        if use_bridge and self.rng.random() < self.cfg.get("bridge_prob", 0.5):
             corrupted = corrupt_chain(chain, self.rng)
             if corrupted is not None:
                 c_resp = format_chain(corrupted)
