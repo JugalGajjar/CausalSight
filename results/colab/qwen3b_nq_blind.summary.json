@@ -1,0 +1,37 @@
+{
+  "model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": true,
+  "instr": "none",
+  "max_new_tokens": 64,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 999,
+  "seconds": 377.8,
+  "overall": 0.43743743743743746,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.4954954954954955
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.3633633633633634
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.45345345345345345
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.43743743743743746
+    }
+  }
+}

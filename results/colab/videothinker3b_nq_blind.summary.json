@@ -1,0 +1,37 @@
+{
+  "model": "Falconss1/VideoThinker-R1-3B",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": true,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "multi",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 999,
+  "seconds": 955.1,
+  "overall": 0.38538538538538536,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.44744744744744747
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.3063063063063063
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.4024024024024024
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.38538538538538536
+    }
+  }
+}

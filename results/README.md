@@ -1,9 +1,10 @@
-# Results index (all matched preprocessing; CLEVRER = 1,000 stratified validation questions; CausalVQA = debug split)
+# Results index (all matched preprocessing; CLEVRER = 1,000 stratified validation questions; CausalVQA = debug split; NExT-QA = 999-question val subset)
 
 * `stage0/` Qwen2.5-VL-3B base and outcome-only GRPO (balanced / natural mix); faithfulness suite.
 * `stage1/`, `stage2/` grounded-chain SFT, chain GRPO (3 seeds), CSR (2 seeds), step-credit variants, no-necessity ablation.
 * `baselines/` VideoRFT-3B, VideoThinker-R1-3B (Wu et al.), Video-R1-7B on our suite.
-* `causalvqa/` real-video transfer.
+* `causalvqa/` real-video transfer (debug split).
+* `nextqa/` real-video transfer on a 999-question NExT-QA val subset; "before" block for the mixed-data experiment.
 * `colab/` per-condition summaries and faithfulness tables for every run (per-item jsonl not tracked).
 
 ## Second base: InternVL3-2B (language model Qwen2.5-1.5B, InternViT-300M), lr 3e-6 for RL (1e-5 diverged)
