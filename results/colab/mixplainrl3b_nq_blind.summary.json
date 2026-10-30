@@ -1,0 +1,41 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/grpo_mix_plain/adapter",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": true,
+  "instr": "plain",
+  "max_new_tokens": 64,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 4995,
+  "seconds": 2983.8,
+  "overall": 0.6852852852852853,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.18618618618618618,
+      "per_option": 0.6894894894894895
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.14114114114114115,
+      "per_option": 0.6546546546546547
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.21021021021021022,
+      "per_option": 0.7117117117117117
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.17917917917917917,
+      "per_option": 0.6852852852852853
+    }
+  }
+}

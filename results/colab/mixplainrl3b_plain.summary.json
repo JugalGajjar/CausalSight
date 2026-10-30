@@ -1,0 +1,47 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/grpo_mix_plain/adapter",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 64,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": "/content/data/evalpack/chains.jsonl",
+  "per_type": 250,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 2537,
+  "seconds": 1511.9,
+  "overall": 0.9042175798186834,
+  "by_type": {
+    "descriptive": {
+      "n": 250,
+      "per_question": 0.904
+    },
+    "explanatory": {
+      "n": 250,
+      "n_options": 904,
+      "per_option": 0.9712389380530974,
+      "per_question": 0.904
+    },
+    "predictive": {
+      "n": 250,
+      "n_options": 500,
+      "per_option": 0.892,
+      "per_question": 0.796
+    },
+    "counterfactual": {
+      "n": 250,
+      "n_options": 883,
+      "per_option": 0.8425821064552661,
+      "per_question": 0.564
+    },
+    "inferential(per_question)": {
+      "n": 750,
+      "per_question": 0.7546666666666667
+    }
+  }
+}

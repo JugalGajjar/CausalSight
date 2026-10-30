@@ -1,0 +1,63 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/sft_mix_plain/adapter",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": false,
+  "instr": "chain",
+  "max_new_tokens": 64,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 4995,
+  "seconds": 1975.9,
+  "overall": 0.8264264264264264,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.3783783783783784,
+      "per_option": 0.8084084084084084
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.5495495495495496,
+      "per_option": 0.8564564564564564
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.4084084084084084,
+      "per_option": 0.8144144144144144
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.44544544544544545,
+      "per_option": 0.8264264264264264
+    }
+  },
+  "chain": {
+    "causal": {
+      "n": 1665,
+      "format_rate": 0.0,
+      "mean_steps": 0.0
+    },
+    "descriptive": {
+      "n": 1665,
+      "format_rate": 0.0,
+      "mean_steps": 0.0
+    },
+    "temporal": {
+      "n": 1665,
+      "format_rate": 0.0,
+      "mean_steps": 0.0
+    },
+    "ALL": {
+      "n": 4995,
+      "format_rate": 0.0,
+      "mean_steps": 0.0
+    }
+  }
+}

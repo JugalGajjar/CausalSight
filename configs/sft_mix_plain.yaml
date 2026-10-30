@@ -1,4 +1,6 @@
 # Mixed-data experiment, SFT arm 'mix_plain'. Same recipe as configs/stage1_sft.yaml; data from cs-mix.
+# cs-sft appends the chain instruction to every prompt, so this arm sees the same prompt as 'mix_chains' and
+# differs only in the response (bare <answer>). Evaluate it as trained: --instr chain --mc option, 64 tokens.
 model: Qwen/Qwen2.5-VL-3B-Instruct
 data_file: /content/drive/MyDrive/causalsight/mix/mixed_plain_sft.jsonl
 n_frames: 16

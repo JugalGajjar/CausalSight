@@ -5,6 +5,7 @@
 * `baselines/` VideoRFT-3B, VideoThinker-R1-3B (Wu et al.), Video-R1-7B on our suite.
 * `causalvqa/` real-video transfer (debug split).
 * `nextqa/` real-video transfer on a 999-question NExT-QA val subset; "before" block for the mixed-data experiment.
+* `mixed/` the mixed real/synthetic chain experiment: six arms on CLEVRER, NExT-QA, CausalVQA.
 * `colab/` per-condition summaries and faithfulness tables for every run (per-item jsonl not tracked).
 
 ## Second base: InternVL3-2B (language model Qwen2.5-1.5B, InternViT-300M), lr 3e-6 for RL (1e-5 diverged)
