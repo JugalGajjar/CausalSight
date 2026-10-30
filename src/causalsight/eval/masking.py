@@ -17,6 +17,8 @@ from PIL import Image, ImageDraw
 from causalsight.data.schema import Evidence
 
 Region = tuple[int, int, tuple[float, float, float, float]]  # t_start, t_end, normalized box
+CHAIN_SCALE = 128  # positions a chain's `t=` spans refer to (CLEVRER frame count; real-video spans are rescaled to it)
+WHOLE_FRAME = (0.0, 0.0, 1.0, 1.0)
 
 
 def sampled_frame_indices(n_total: int, n_sampled: int) -> list[int]:
@@ -111,8 +113,37 @@ class EvidenceIndex:
                         opt[f"{key}_{cid}"].add((e["t_start"], e["t_end"], box))
         return cls({k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()})
 
+    @classmethod
+    def from_outputs(cls, path: Path | str) -> EvidenceIndex:
+        """Self-cited evidence: the regions a model wrote in its own chains, read from a harness per-item
+        output file (`raw` column). Keyed per item (its own chain) and pooled per question (`qid`/`qset`).
+        Spans are on the CHAIN_SCALE grid whatever the benchmark; whole-frame boxes are dropped."""
+        from causalsight.train.format import parse_chain
+
+        regions: dict[str, set[Region]] = defaultdict(set)
+        opt: dict[str, set[Region]] = defaultdict(set)
+        with Path(path).open() as f:
+            for line in f:
+                r = json.loads(line)
+                parsed = parse_chain(r.get("raw", ""))
+                if parsed.chain is None:
+                    continue
+                qid = r.get("qid") or r.get("qset") or r["id"]
+                for t in parsed.chain.triplets:
+                    e = t.evidence
+                    if tuple(e.box) == WHOLE_FRAME:
+                        continue
+                    reg = (e.t_start, e.t_end, tuple(e.box))
+                    opt[r["id"]].add(reg)
+                    regions[qid].add(reg)
+        return cls({k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()})
+
     def get(self, key: str) -> list[Region]:
         return self.regions.get(key, [])
+
+    def get_cited(self, item_id: str) -> list[Region]:
+        """Regions this exact item's own chain cited (no pooling over the question's other options)."""
+        return self.option_regions.get(item_id, [])
 
     def get_for_item(self, item_id: str, question_id: str) -> list[Region]:
         """Grounding reference for an item: a per-option item is scored against its own option's chain,

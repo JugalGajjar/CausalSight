@@ -22,6 +22,7 @@ from pathlib import Path
 from causalsight.data.schema import Evidence
 from causalsight.eval.benchmarks import load_benchmark
 from causalsight.eval.masking import (
+    CHAIN_SCALE,
     EvidenceIndex,
     TrackMasker,
     mask_frames,
@@ -111,11 +112,17 @@ def run(
         benchmark.mc_mode = mc
     if ids_file and hasattr(benchmark, "ids"):
         benchmark.ids = set(json.loads(Path(ids_file).read_text()))
-    evidence = EvidenceIndex.from_chains(chains) if chains else None
+    cite = mask in ("cite", "cite_random")  # mask what a model itself cited (per item), from a harness output file
+    if cite:
+        if not chains:
+            raise ValueError("--mask cite needs --chains <harness per-item outputs jsonl of the citing model>")
+        evidence = EvidenceIndex.from_outputs(chains)
+    else:
+        evidence = EvidenceIndex.from_chains(chains) if chains else None
     if mask != "none" and evidence is None:
         raise ValueError("--mask needs --chains <generated chains jsonl>")
     rng = random.Random(seed)
-    n_total = N_TOTAL_FRAMES.get(bench, 128)
+    n_total = CHAIN_SCALE if cite else N_TOTAL_FRAMES.get(bench, 128)  # cited spans live on the chain grid
     tracker = TrackMasker(proposals_root or root / "derender_proposals") if mask in ("track", "track_random") else None
     track_evidence = EvidenceIndex.from_chains(chains, last_only=True) if (tracker is not None and chains) else None
     rows: list[dict] = []
@@ -128,7 +135,7 @@ def run(
     qkey = lambda it: it.meta.get("qid", it.id)  # per-option items share the question's evidence
     if evidence is not None:
         # keep the item set identical across plain / blind / masked runs on the same chains file
-        items = [it for it in items if evidence.get(qkey(it))]
+        items = [it for it in items if (evidence.get_cited(it.id) if cite else evidence.get(qkey(it)))]
     if per_type:
         items = stratified_sample(items, per_type, seed, key=qkey)
     if max_items:
@@ -143,7 +150,7 @@ def run(
             m = ANSWER_RE.search(raw)
             sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
             if instr == "chain":
-                sc.update(chain_metrics(raw, evidence.get_for_item(item.id, qkey(item)) if evidence else []))
+                sc.update(chain_metrics(raw, evidence.get_for_item(item.id, qkey(item)) if (evidence and not cite) else []))  # cited regions are not ground truth
             row = {"id": item.id, "question_type": item.question_type, "prompt": prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
             if regs:
                 row["masked_fraction"] = round(masked_fraction(regs, n_total), 4)
@@ -154,10 +161,10 @@ def run(
         pending.clear()
 
     for item in items:
-        regions = evidence.get(qkey(item)) if evidence else []
+        regions = (evidence.get_cited(item.id) if cite else evidence.get(qkey(item))) if evidence else []
         if mask != "none" and not regions:
             continue  # no localizable evidence for this item; skip so masked/unmasked sets match
-        if mask == "random":
+        if mask in ("random", "cite_random"):
             regions = random_regions(regions, rng)
         elif tracker is not None:
             scene_index = int(item.id.split("_")[0])
@@ -236,13 +243,15 @@ def main() -> None:
     p.add_argument("--blind", action="store_true", help="replace the video with black frames")
     p.add_argument(
         "--mask",
-        choices=["none", "evidence", "random", "track", "track_random"],
+        choices=["none", "evidence", "random", "track", "track_random", "cite", "cite_random"],
         default="none",
         help="evidence: black out GT evidence boxes at their moments; random: same boxes at random positions; "
-        "track: remove the decisive evidence objects for the whole video; track_random: same-size masks elsewhere",
+        "track: remove the decisive evidence objects for the whole video; track_random: same-size masks elsewhere; "
+        "cite: black out the regions a model cited in its own chains (--chains = that model's per-item outputs); "
+        "cite_random: same boxes at random positions",
     )
     p.add_argument("--proposals-root", type=Path, default=None, help="CLEVRER derender proposals dir (track modes)")
-    p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions")
+    p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions (cite modes: a harness per-item outputs jsonl)")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--per-type", type=int, default=None, help="stratified subset: this many items per question type")
     p.add_argument("--instr", choices=list(INSTR), default="none", help="append the training-time format instruction (plain: <think>/<answer>; chain: triplet steps)")
