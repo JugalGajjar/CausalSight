@@ -9,6 +9,8 @@ correct only if all five options are judged correctly. `paired` = both choice se
 | Qwen2.5-VL-3B base | 0.580 | 0.430 | 0.410 | 0.17 | 0.42 / 0.53 / 0.75 / 0.68 / 0.53 |
 | GRPO balanced (ours) | 0.515 | 0.350 | 0.390 | 0.13 | 0.40 / 0.53 / 0.68 / 0.55 / 0.42 |
 | VideoThinker-R1-3B (Wu et al.) | 0.475 | 0.310 | 0.340 | 0.14 | 0.45 / 0.45 / 0.60 / 0.50 / 0.38 |
+| Qwen2.5-VL-3B base, per option | 0.115 | 0.050 | 0.070 | 0.05 | per-option 0.616; "yes" to 45% |
+| GRPO balanced (ours), per option | 0.125 | 0.070 | 0.080 | 0.05 | per-option 0.615; "yes" to 34% |
 | SFT chains (ours) | 0.020 | 0.010 | 0.020 | 0.00 | per-option 0.461; says "yes" to 54% of options (20% are correct) |
 | chain GRPO (ours) | 0.050 | 0.020 | 0.010 | 0.04 | per-option 0.479; "yes" to 60% |
 | CSR (ours) | 0.040 | 0.020 | 0.015 | 0.03 | per-option 0.426; "yes" to 63% |
@@ -19,4 +21,6 @@ GRPO -6.5 points on set accuracy, Wu et al.'s released model -10.5. (2) The chai
 answer "yes" to most options and fall below the always-"no" rate (0.80 per option). Synthetic-only chain
 training does not transfer to real video; this is reported as a limitation and as motivation for mixed
 real/synthetic chain data in future work. (3) The base model's blind gap on real video is 0.17, so the
-benchmark is only moderately video-dependent for a 3B model.
+benchmark is only moderately video-dependent for a 3B model. (4) The per-option format itself removes most of the
+accuracy: the untrained base falls from 0.580 to 0.115 set accuracy when asked one yes/no question per option, so the
+chain rows are to be compared with the two per-option reference rows, not with the letters rows.

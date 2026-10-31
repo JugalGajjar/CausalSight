@@ -1,0 +1,63 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/stage2_outcome_only/adapter",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": false,
+  "instr": "chain",
+  "max_new_tokens": 640,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "cite",
+  "chains": "/content/drive/MyDrive/causalsight/results_v2/chainrl3b_nq_plain.jsonl",
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 4770,
+  "seconds": 10618.2,
+  "overall": 0.680503144654088,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.23723723723723725,
+      "per_option": 0.7105101413644745
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.22522522522522523,
+      "per_option": 0.6316137566137566
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.21021021021021022,
+      "per_option": 0.6958920907418762
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.22422422422422422,
+      "per_option": 0.680503144654088
+    }
+  },
+  "chain": {
+    "causal": {
+      "n": 1627,
+      "format_rate": 0.9932390903503381,
+      "mean_steps": 3.3515673017824215
+    },
+    "descriptive": {
+      "n": 1512,
+      "format_rate": 0.9847883597883598,
+      "mean_steps": 1.7453703703703705
+    },
+    "temporal": {
+      "n": 1631,
+      "format_rate": 0.9981606376456161,
+      "mean_steps": 3.182709993868792
+    },
+    "ALL": {
+      "n": 4770,
+      "format_rate": 0.9922431865828092,
+      "mean_steps": 2.7846960167714885
+    }
+  }
+}

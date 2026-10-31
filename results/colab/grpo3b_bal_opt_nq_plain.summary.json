@@ -1,0 +1,41 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/stage0b/adapter",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": false,
+  "instr": "plain",
+  "max_new_tokens": 384,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 4995,
+  "seconds": 1855.5,
+  "overall": 0.804004004004004,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.3813813813813814,
+      "per_option": 0.8384384384384385
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.3483483483483483,
+      "per_option": 0.7387387387387387
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.33633633633633636,
+      "per_option": 0.8348348348348348
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.35535535535535534,
+      "per_option": 0.804004004004004
+    }
+  }
+}

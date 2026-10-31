@@ -1,0 +1,63 @@
+{
+  "model": "Qwen/Qwen2.5-VL-3B-Instruct",
+  "bench": "causalvqa",
+  "split": "debug",
+  "blind": false,
+  "instr": "none",
+  "max_new_tokens": 64,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 1000,
+  "seconds": 763.7,
+  "overall": 0.616,
+  "by_type": {
+    "anticipation": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.125,
+      "paired_acc": 0.05,
+      "per_option": 0.59
+    },
+    "counterfactual": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.125,
+      "paired_acc": 0.05,
+      "per_option": 0.595
+    },
+    "descriptive": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.15,
+      "paired_acc": 0.1,
+      "per_option": 0.67
+    },
+    "hypothetical": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.1,
+      "paired_acc": 0.0,
+      "per_option": 0.695
+    },
+    "planning": {
+      "n_questions": 20,
+      "n_sets": 40,
+      "set_acc": 0.075,
+      "paired_acc": 0.05,
+      "per_option": 0.53
+    },
+    "ALL": {
+      "n_questions": 100,
+      "n_sets": 200,
+      "set_acc": 0.115,
+      "paired_acc": 0.05,
+      "per_option": 0.616
+    }
+  }
+}

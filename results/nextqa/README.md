@@ -1,7 +1,7 @@
 # NExT-QA val subset (real video, 999 questions = 333 causal / 333 temporal / 333 descriptive, 5 options), 16 frames, greedy
 
 "Before" row block: the models trained on CLEVRER only, evaluated before the mixed real/synthetic experiment.
-Bare-answer models: letters prompt (`mc=multi`). Chain models: one yes/no item per option (as trained,
+Bare-answer models: letters prompt (`mc=multi`), plus per-option reference rows. Chain models: one yes/no item per option (as trained,
 `mc=option`), 4,995 items; a question is correct only if all five options are judged correctly.
 `selection acc` (derived from the same outputs) picks the single option judged "yes" and splits credit
 evenly when several are, so it is comparable to the letters prompt. Blind = black frames.
@@ -13,13 +13,17 @@ evenly when several are, so it is comparable to the letters prompt. Blind = blac
 | Qwen2.5-VL-3B base | letters | 0.730 | 0.736 | 0.691 | 0.763 | 0.437 | 0.29 |
 | GRPO balanced (ours) | letters | 0.750 | 0.760 | 0.706 | 0.784 | 0.437 | 0.31 |
 | VideoThinker-R1-3B (Wu et al.) | letters | 0.736 | 0.754 | 0.682 | 0.772 | 0.385 | 0.35 |
+| Qwen2.5-VL-3B base | per option | 0.461 | 0.426 | 0.411 | 0.547 | 0.099 | 0.36 |
+| GRPO balanced (ours) | per option | 0.355 | 0.381 | 0.336 | 0.348 | 0.083 | 0.27 |
 | SFT chains (ours) | per option | 0.122 | 0.144 | 0.111 | 0.111 | 0.031 | 0.09 |
 | chain GRPO (ours) | per option | 0.194 | 0.201 | 0.201 | 0.180 | 0.048 | 0.15 |
 
-Chain models, per-option view (always-"no" baseline = 0.80):
+Per-option view (always-"no" baseline = 0.80), reference models first:
 
 | model | per-option acc | blind per-option | "yes" rate (20% correct) | recall yes / no | selection acc | blind selection | format rate | mean steps |
 |---|---|---|---|---|---|---|---|---|
+| Qwen2.5-VL-3B base | 0.860 | 0.802 | 0.19 | 0.63 / 0.92 | 0.595 | 0.270 | n/a | n/a |
+| GRPO balanced | 0.804 | 0.803 | 0.15 | 0.50 / 0.88 | 0.522 | 0.260 | n/a | n/a |
 | SFT chains | 0.622 | 0.498 | 0.38 | 0.74 / 0.59 | 0.451 | 0.259 | 0.96 | 2.7 |
 | chain GRPO | 0.682 | 0.559 | 0.41 | 0.80 / 0.65 | 0.470 | 0.272 | 0.98 | 2.7 |
 
@@ -30,5 +34,9 @@ keep their format (96-98% parseable, 2.7 steps) but not their judgment: they say
 options when 20% are correct, and their per-option accuracy sits below the always-"no" rate. Under the
 selection view they reach 0.45-0.47, well below the base (0.73), and the video still matters to them
 (selection drops to 0.26-0.27 blind). (3) Chain GRPO is ahead of chain SFT on every number, so RL on
-synthetic outcomes helps the chain model a little on real video but does not close the gap. This block
-is the baseline for the mixed real/synthetic arms (`sft_mix_*`, `grpo_mix_*`, `*_real_chains`).
+synthetic outcomes helps the chain model a little on real video but does not close the gap. (4) The per-option
+format itself is expensive: asked one yes/no question per option, the base model falls from 0.730 to 0.595
+selection accuracy and GRPO balanced from 0.750 to 0.522. Both turn conservative ("yes" to 19% and 15% of
+options; 27% and 42% of questions get no "yes" at all), so the chain models' selection accuracy is to be
+compared with these two rows, not with the letters rows. This block is the baseline for the mixed
+real/synthetic arms (`sft_mix_*`, `grpo_mix_*`, `*_real_chains`; see `results/mixed/`).
