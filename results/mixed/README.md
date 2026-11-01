@@ -82,33 +82,56 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    gold, 0.05 blind), which leaves 27% of questions with no "yes" at all (42% for GRPO balanced); the trained arms say
    "yes" more often (0.27-0.33; the mixed chain GRPO model leaves 9% of questions without a "yes" and gives two or more
    to 40%) and select the right option more often.
-7. **On real video the answers do not depend on the cited evidence** (table below). For every real-data chain model
-   the cite gap is 0.001-0.004 with a CI that includes zero: blacking out what the model itself cited flips its correct
-   answers no more often than blacking out random boxes of the same size, while blacking out the whole video costs
-   the same models 15-25 points. The citations are well formed and point at real regions, but the answer is computed
-   from the rest of the frames. The CLEVRER-only chain GRPO model is the one exception (0.015 [0.00,0.02]) on a 7%
-   random-flip floor at 0.68 accuracy, and the cross-model control (-0.002) confirms the operation itself is neutral.
-8. **The chain models do use the video more than the plain one.** Per-option blind gaps are 0.15-0.25 for the chain
-   arms against 0.125 for plain SFT, so chain supervision shifts weight from language priors to the frames even though
-   it does not make the cited region decisive. Two readings remain open: NExT-QA evidence is spatially redundant
-   (descriptive questions carry the largest blind gaps, 0.32-0.38), or the citation is decorative. A size-matched
-   random control cannot separate them; the same test on CLEVRER, where evidence is local and unique, can (pending).
+7. **On synthetic video the answers depend on the cited evidence; on real video they do not** (tables below). On
+   CLEVRER every chain model has a positive cite gap with a CI above zero (0.030-0.089): blacking out what the model
+   itself cited flips 2-3x more correct answers than blacking out boxes of the same size on the same frames, and the
+   gap is as large as the gold evidence-span gap (mixed chain SFT 0.089 vs 0.094, mixed chain GRPO 0.042 vs 0.067).
+   On NExT-QA the same models have cite gaps of 0.001-0.004 with CIs that include zero (mixed chain GRPO 0.042 on
+   CLEVRER vs 0.004 on NExT-QA), while blacking out the whole video still costs them 15-25 points. The real-video
+   citations are well formed and point at real regions, but the answer is computed from the rest of the frames. The
+   CLEVRER-only chain GRPO model is the one model with a small real-video gap (0.015 [0.00,0.02]) on a 7%
+   random-flip floor, and the cross-model control (-0.002) confirms the masking operation itself is neutral.
+8. **The chain models do use the video more than the plain one.** Per-option blind gaps on NExT-QA are 0.15-0.25
+   for the chain arms against 0.125 for plain SFT, so chain supervision shifts weight from language priors to the
+   frames even though it does not make the cited region decisive. The CLEVRER result rules out "the model cannot cite
+   decisively": the same mechanism is answer-relevant where evidence is local and unique. What remains open for real
+   video is whether NExT-QA evidence is spatially redundant (descriptive questions carry the largest blind gaps,
+   0.32-0.38) or whether the pseudo-labelled chains (teacher steps plus detector boxes) taught the model to cite
+   objects that are not the decisive evidence. Either way, self-citation faithfulness learned on synthetic video did
+   not carry over to real video at this scale.
 
-## Self-cited evidence masking (NExT-QA, per-option items)
+## Self-cited evidence masking (per-option items)
 
 For every item the regions cited in the model's own unmasked chain (`E: t=a-b box=...`, mapped from the 0-127 chain
 grid onto the 16 sampled frames; whole-frame boxes dropped) are blacked out (`mask_cite`); the control blacks out boxes
 of the same size on the same frames at random positions (`mask_cite_random`). `flip` = share of items correct in the
 plain run that become wrong; the cite gap is their paired difference with a bootstrap 95% CI. Items whose chain cites
 no localizable region are skipped (`n_cite` of 4,995). The last row masks the plain-SFT model, which writes no chains,
-with the mixed chain SFT model's citations: a check that the masking operation itself is neutral. The CLEVRER column is
-the gold evidence-span gap from the CLEVRER suite (gold span vs random span), not a self-citation test.
+with the mixed chain SFT model's citations: a check that the masking operation itself is neutral. The same test on
+CLEVRER (2,537 stratified per-option items; the gold evidence-span gap from the CLEVRER suite alongside) follows.
 
-| model | per-option acc | blind gap | n_cite | flip_cite | flip_cite_random | cite gap [95% CI] | causal cite gap | CLEVRER evidence-span gap |
+NExT-QA (4,995 items):
+
+| model | per-option acc | blind gap | n_cite | flip_cite | flip_cite_random | cite gap [95% CI] | causal cite gap |
+|---|---|---|---|---|---|---|---|
+| chain GRPO (CLEVRER only) | 0.682 | 0.124 | 4770 | 0.085 | 0.070 | 0.015 [0.00,0.02] | 0.017 |
+| mix chain SFT | 0.845 | 0.223 | 4906 | 0.028 | 0.025 | 0.003 [-0.00,0.01] | 0.006 |
+| + chain GRPO | 0.837 | 0.249 | 4912 | 0.022 | 0.018 | 0.004 [-0.00,0.01] | 0.008 |
+| real chain SFT | 0.837 | 0.194 | 4891 | 0.029 | 0.025 | 0.003 [-0.00,0.01] | 0.007 |
+| + chain GRPO | 0.852 | 0.154 | 4889 | 0.016 | 0.015 | 0.001 [-0.00,0.00] | 0.000 |
+| control: mix plain SFT, mix chain SFT's citations | 0.826 | 0.125 | 4906 | 0.014 | 0.016 | -0.002 [-0.01,0.00] | 0.000 |
+
+CLEVRER (2,537 items):
+
+| model | per-option acc | blind gap | n_cite | flip_cite | flip_cite_random | cite gap [95% CI] | explanatory cite gap | gold evidence-span gap |
 |---|---|---|---|---|---|---|---|---|
-| chain GRPO (CLEVRER only) | 0.682 | 0.124 | 4770 | 0.085 | 0.070 | 0.015 [0.00,0.02] | 0.017 | 0.076 |
-| mix chain SFT | 0.845 | 0.223 | 4906 | 0.028 | 0.025 | 0.003 [-0.00,0.01] | 0.006 | 0.094 |
-| + chain GRPO | 0.837 | 0.249 | 4912 | 0.022 | 0.018 | 0.004 [-0.00,0.01] | 0.008 | 0.067 |
-| real chain SFT | 0.837 | 0.194 | 4891 | 0.029 | 0.025 | 0.003 [-0.00,0.01] | 0.007 | 0.069 |
-| + chain GRPO | 0.852 | 0.154 | 4889 | 0.016 | 0.015 | 0.001 [-0.00,0.00] | 0.000 | 0.062 |
-| control: mix plain SFT, mix chain SFT's citations | 0.826 | 0.125 | 4906 | 0.014 | 0.016 | -0.002 [-0.01,0.00] | 0.000 | n/a |
+| chain GRPO (CLEVRER only) | 0.871 | 0.367 | 2527 | 0.088 | 0.036 | 0.051 [0.04,0.06] | 0.042 | 0.076 |
+| mix chain SFT | 0.739 | 0.269 | 2512 | 0.165 | 0.077 | 0.089 [0.07,0.11] | 0.156 | 0.094 |
+| + chain GRPO | 0.771 | 0.291 | 2520 | 0.078 | 0.036 | 0.042 [0.03,0.05] | 0.050 | 0.067 |
+| real chain GRPO | 0.535 | 0.076 | 2533 | 0.069 | 0.038 | 0.030 [0.02,0.04] | 0.011 | 0.062 |
+
+The real-chain GRPO model, trained on no CLEVRER chains and barely above chance there, still shows a positive CLEVRER
+cite gap; its one large per-type gap is descriptive (0.129). Real chain SFT was not run on CLEVRER.
+Mask size does not explain the contrast: the cited boxes cover a larger share of the frames on NExT-QA (mean masked
+fraction 0.036-0.042 of pixel-frames for the real-data models) than on CLEVRER (0.004-0.024), yet only the CLEVRER
+masks move the answers.

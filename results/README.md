@@ -6,7 +6,7 @@
 * `causalvqa/` real-video transfer (debug split).
 * `nextqa/` real-video transfer on a 999-question NExT-QA val subset; "before" block for the mixed-data experiment.
 * `mixed/` the mixed real/synthetic chain experiment: six arms on CLEVRER, NExT-QA, CausalVQA; per-option baselines;
-  self-cited evidence masking (cite gap) on NExT-QA.
+  self-cited evidence masking (cite gap) on NExT-QA and CLEVRER.
 * `colab/` per-condition summaries and faithfulness tables for every run (per-item jsonl not tracked).
 
 ## Second base: InternVL3-2B (language model Qwen2.5-1.5B, InternViT-300M), lr 3e-6 for RL (1e-5 diverged)
