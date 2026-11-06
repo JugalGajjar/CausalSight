@@ -1,0 +1,41 @@
+{
+  "causal": {
+    "n_items": 1665,
+    "n_steps": 4827,
+    "detected_rate": 0.906,
+    "mean_iou": 0.549,
+    "hit50": 0.609,
+    "random_mean_iou": 0.216,
+    "random_hit50": 0.166
+  },
+  "ALL": {
+    "n_items": 4995,
+    "n_steps": 14395,
+    "detected_rate": 0.916,
+    "mean_iou": 0.558,
+    "hit50": 0.624,
+    "random_mean_iou": 0.238,
+    "random_hit50": 0.194,
+    "unique_detector_calls": 3319,
+    "detector": "IDEA-Research/grounding-dino-tiny",
+    "threshold": 0.35
+  },
+  "descriptive": {
+    "n_items": 1665,
+    "n_steps": 4734,
+    "detected_rate": 0.912,
+    "mean_iou": 0.565,
+    "hit50": 0.632,
+    "random_mean_iou": 0.254,
+    "random_hit50": 0.21
+  },
+  "temporal": {
+    "n_items": 1665,
+    "n_steps": 4834,
+    "detected_rate": 0.929,
+    "mean_iou": 0.561,
+    "hit50": 0.63,
+    "random_mean_iou": 0.244,
+    "random_hit50": 0.205
+  }
+}

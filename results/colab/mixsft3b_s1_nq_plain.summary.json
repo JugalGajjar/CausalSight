@@ -1,0 +1,63 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/sft_mix_chains_s1/adapter",
+  "bench": "nextqa",
+  "split": "val",
+  "blind": false,
+  "instr": "chain",
+  "max_new_tokens": 640,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "none",
+  "chains": null,
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 4995,
+  "seconds": 9820.2,
+  "overall": 0.8464464464464464,
+  "by_type": {
+    "causal": {
+      "n": 333,
+      "acc": 0.4594594594594595,
+      "per_option": 0.8426426426426427
+    },
+    "descriptive": {
+      "n": 333,
+      "acc": 0.5825825825825826,
+      "per_option": 0.8756756756756757
+    },
+    "temporal": {
+      "n": 333,
+      "acc": 0.4084084084084084,
+      "per_option": 0.821021021021021
+    },
+    "ALL": {
+      "n": 999,
+      "acc": 0.48348348348348347,
+      "per_option": 0.8464464464464464
+    }
+  },
+  "chain": {
+    "causal": {
+      "n": 1665,
+      "format_rate": 1.0,
+      "mean_steps": 3.0006006006006007
+    },
+    "descriptive": {
+      "n": 1665,
+      "format_rate": 1.0,
+      "mean_steps": 3.0342342342342343
+    },
+    "temporal": {
+      "n": 1665,
+      "format_rate": 1.0,
+      "mean_steps": 3.0006006006006007
+    },
+    "ALL": {
+      "n": 4995,
+      "format_rate": 1.0,
+      "mean_steps": 3.011811811811812
+    }
+  }
+}

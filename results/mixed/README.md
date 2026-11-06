@@ -1,4 +1,4 @@
-# Mixed real/synthetic chain experiment (Qwen2.5-VL-3B, single seed)
+# Mixed real/synthetic chain experiment (Qwen2.5-VL-3B; one seed per arm, a second SFT seed for the two mixed arms)
 
 Arms: `mix` = 4,400 CLEVRER chains + 8,000 NExT-QA pseudo-labelled chains (teacher Qwen2.5-VL-7B steps, Grounding DINO boxes);
 `real` = the 8,000 NExT-QA chains only; `plain` = the mix with bare `<answer>` responses (same prompts, no chains).
@@ -6,6 +6,8 @@ Each SFT arm is followed by 1,000 steps of GRPO (outcome + format) on 1,500 CLEV
 (`real` RL: NExT-QA only). All chain-style models answer one yes/no item per option. The plain GRPO arm never produced
 `<think>` text (its SFT taught bare answers), so it is an outcome-only RL control on bare answers.
 The plain SFT arm was trained with the chain instruction in the prompt and evaluated the same way.
+`seed 1` rows are a second SFT run of the same recipe and data (seed changes data order and bridge corruption;
+`configs/sft_mix_*_s1.yaml`). The RL arms and the real-only arms have one seed.
 
 ## NExT-QA val subset (999 questions; per-option models)
 
@@ -20,8 +22,10 @@ in the same per-option format (their letters-prompt accuracy: base 0.730, GRPO b
 | chain SFT (CLEVRER only) | 0.122 | 0.144 | 0.111 | 0.111 | 0.622 | 0.38 | 0.451 | 0.259 | 0.031 |
 | + chain GRPO (CLEVRER only) | 0.194 | 0.201 | 0.201 | 0.180 | 0.682 | 0.41 | 0.470 | 0.272 | 0.048 |
 | mix plain SFT | 0.445 | 0.378 | 0.408 | 0.550 | 0.826 | 0.32 | 0.637 | 0.396 | 0.198 |
+| mix plain SFT, seed 1 | 0.487 | 0.414 | 0.468 | 0.580 | 0.849 | 0.29 | 0.661 | 0.386 | 0.194 |
 | + plain GRPO | 0.436 | 0.363 | 0.402 | 0.544 | 0.822 | 0.33 | 0.631 | 0.383 | 0.179 |
 | mix chain SFT | 0.476 | 0.468 | 0.393 | 0.568 | 0.845 | 0.27 | 0.637 | 0.357 | 0.141 |
+| mix chain SFT, seed 1 | 0.483 | 0.459 | 0.408 | 0.583 | 0.846 | 0.27 | 0.642 | 0.377 | 0.189 |
 | + chain GRPO | 0.463 | 0.441 | 0.420 | 0.529 | 0.837 | 0.29 | 0.640 | 0.358 | 0.130 |
 | real chain SFT | 0.458 | 0.435 | 0.402 | 0.538 | 0.837 | 0.30 | 0.641 | 0.368 | 0.161 |
 | + chain GRPO | 0.481 | 0.438 | 0.444 | 0.562 | 0.852 | 0.28 | 0.653 | 0.379 | 0.187 |
@@ -33,8 +37,10 @@ in the same per-option format (their letters-prompt accuracy: base 0.730, GRPO b
 | chain SFT (CLEVRER only) | 0.888 | 0.902 | 0.820 | 0.805 | 0.851 | 0.39 | 0.51 | 0.62 / 0.66 / 0.69 / 0.72 |
 | + chain GRPO (CLEVRER only) | 0.924 | 0.947 | 0.832 | 0.801 | 0.871 | 0.37 | 0.50 | 0.57 / 0.64 / 0.67 / 0.70 |
 | mix plain SFT | 0.892 | 0.970 | 0.900 | 0.848 | 0.906 | 0.39 | 0.48 | n/a (no chains) |
+| mix plain SFT, seed 1 | 0.864 | 0.973 | 0.880 | 0.856 | 0.903 | 0.42 | 0.45 | n/a (no chains) |
 | + plain GRPO | 0.904 | 0.971 | 0.892 | 0.843 | 0.904 | 0.39 | 0.49 | n/a (no chains) |
 | mix chain SFT | 0.860 | 0.648 | 0.798 | 0.763 | 0.739 | 0.27 | 0.49 | 0.56 / 0.63 / 0.70 / 0.72 |
+| mix chain SFT, seed 1 | (running) | | | | | | | |
 | + chain GRPO | 0.880 | 0.756 | 0.764 | 0.759 | 0.771 | 0.29 | 0.48 | 0.54 / 0.62 / 0.70 / 0.70 |
 | real chain SFT | 0.476 | 0.512 | 0.622 | 0.521 | 0.533 | 0.06 | 0.46 | 0.27 / 0.22 / 0.15 / 0.19 |
 | + chain GRPO | 0.464 | 0.485 | 0.674 | 0.529 | 0.535 | 0.08 | 0.44 | 0.24 / 0.22 / 0.18 / 0.18 |
@@ -65,6 +71,9 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
 2. **But the repair comes from the real data, not from the chains.** The plain arms trained on the same questions with
    bare answers reach the same selection accuracy (0.63-0.64) and per-question accuracy within 2-3 points (0.44-0.45 vs
    0.46-0.48). Chain supervision neither helps nor hurts real-video accuracy at this scale and seed count.
+   The second SFT seed confirms it: plain seed 1 reaches selection 0.661 and per-question 0.487, chain seed 1
+   0.642 and 0.483; the seed-to-seed spread of the plain arm (0.637 to 0.661) is larger than any chain-vs-plain
+   difference, so the two conditions are indistinguishable on NExT-QA accuracy.
 3. **Mixing chain styles costs synthetic accuracy.** The mixed chain SFT drops CLEVRER explanatory from 0.902 to 0.648
    (ALL 0.851 to 0.739), while the plain mix on the same 4,400 CLEVRER questions reaches 0.970 explanatory (ALL 0.906),
    the best CLEVRER numbers of any model. Chain GRPO recovers part of the loss (explanatory 0.756). Object grounding of
@@ -91,6 +100,9 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    citations are well formed and point at real regions, but the answer is computed from the rest of the frames. The
    CLEVRER-only chain GRPO model is the one model with a small real-video gap (0.015 [0.00,0.02]) on a 7%
    random-flip floor, and the cross-model control (-0.002) confirms the masking operation itself is neutral.
+   Both halves replicate: the second mixed chain SFT seed has the same NExT-QA cite gap (0.003 [-0.00,0.01]),
+   and an InternVL3-2B chain GRPO model has a CLEVRER cite gap of 0.047 [0.03,0.06], so the synthetic-video
+   result is not specific to the Qwen base.
 8. **The chain models do use the video more than the plain one.** Per-option blind gaps on NExT-QA are 0.15-0.25
    for the chain arms against 0.125 for plain SFT, so chain supervision shifts weight from language priors to the
    frames even though it does not make the cited region decisive. The CLEVRER result rules out "the model cannot cite
@@ -99,6 +111,16 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    0.32-0.38) or whether the pseudo-labelled chains (teacher steps plus detector boxes) taught the model to cite
    objects that are not the decisive evidence. Either way, self-citation faithfulness learned on synthetic video did
    not carry over to real video at this scale.
+9. **The real-video citations are not garbage: they land on the named object.** Re-detecting the entity each step
+   names ("Where is the white dog?") with Grounding DINO on the cited frame (table below) finds it 87-93% of the
+   time, and the cited box overlaps the detection with mean IoU 0.53-0.57 (hit@0.5 0.58-0.63), against 0.22-0.25
+   (0.16-0.21) for a same-size box at a random position. So the chain cites the right object at the right place,
+   and that object is still not what decides the answer. The detector is the same family that produced the
+   training boxes, so this measures agreement with the pseudo-label source, not ground truth; and the entities are
+   the ones the model chose to name, which are not necessarily the question-relevant ones. One pseudo-label
+   artifact is visible in the outputs: 20-30% of the mixed models' chains (14% for the real-only arms) cite one
+   identical box for every step, and in the blind condition 92-99% do, so a repeated box is the model's default
+   when it has nothing to look at.
 
 ## Self-cited evidence masking (per-option items)
 
@@ -116,6 +138,7 @@ NExT-QA (4,995 items):
 |---|---|---|---|---|---|---|---|
 | chain GRPO (CLEVRER only) | 0.682 | 0.124 | 4770 | 0.085 | 0.070 | 0.015 [0.00,0.02] | 0.017 |
 | mix chain SFT | 0.845 | 0.223 | 4906 | 0.028 | 0.025 | 0.003 [-0.00,0.01] | 0.006 |
+| mix chain SFT, seed 1 | 0.846 | 0.158 | 4914 | 0.023 | 0.020 | 0.003 [-0.00,0.01] | 0.002 |
 | + chain GRPO | 0.837 | 0.249 | 4912 | 0.022 | 0.018 | 0.004 [-0.00,0.01] | 0.008 |
 | real chain SFT | 0.837 | 0.194 | 4891 | 0.029 | 0.025 | 0.003 [-0.00,0.01] | 0.007 |
 | + chain GRPO | 0.852 | 0.154 | 4889 | 0.016 | 0.015 | 0.001 [-0.00,0.00] | 0.000 |
@@ -129,9 +152,35 @@ CLEVRER (2,537 items):
 | mix chain SFT | 0.739 | 0.269 | 2512 | 0.165 | 0.077 | 0.089 [0.07,0.11] | 0.156 | 0.094 |
 | + chain GRPO | 0.771 | 0.291 | 2520 | 0.078 | 0.036 | 0.042 [0.03,0.05] | 0.050 | 0.067 |
 | real chain GRPO | 0.535 | 0.076 | 2533 | 0.069 | 0.038 | 0.030 [0.02,0.04] | 0.011 | 0.062 |
+| InternVL3-2B chain GRPO (CLEVRER only) | 0.803 | 0.334 | 2532 | 0.084 | 0.037 | 0.047 [0.03,0.06] | 0.025 | 0.077 |
 
 The real-chain GRPO model, trained on no CLEVRER chains and barely above chance there, still shows a positive CLEVRER
 cite gap; its one large per-type gap is descriptive (0.129). Real chain SFT was not run on CLEVRER.
+The InternVL row is the chain GRPO run at lr 1e-5 (`runs/internvl_stage2_outcome_only`, `ivl_chainrl2b_*`), whose
+RL the results index marks as diverged and does not report; its CLEVRER accuracy (0.803) and track gap (0.549) are
+intact, so it is a valid chain model for this test, but it is not the lr 3e-6 model in the InternVL table
+(`ivl_chainrl2b_lr_*`, 0.783). Its largest per-type cite gap is predictive (0.108 [0.07,0.15]).
 Mask size does not explain the contrast: the cited boxes cover a larger share of the frames on NExT-QA (mean masked
 fraction 0.036-0.042 of pixel-frames for the real-data models) than on CLEVRER (0.004-0.024), yet only the CLEVRER
 masks move the answers.
+
+## Citation grounding on real video (`cs-cite-grounding`, NExT-QA plain runs)
+
+For every parsed step of the form "Q: Where is <entity>?" the cited span is mapped to its centre frame and Grounding
+DINO (tiny, threshold 0.35, the same detector family that produced the training boxes) is run on that frame with the
+entity as the phrase. `detected_rate` = share of steps where the detector returns a box; IoU and hit@0.5 compare the
+cited box with the top detection on detected steps; `random` is a same-size box at a random position on the same frame.
+Steps whose box covers the whole frame are dropped. The CLEVRER-only chain GRPO model writes CLEVRER-style steps, not
+"Where is" steps, so only 18 of its steps parse and its row is not informative.
+
+| model | n_steps | detected_rate | mean IoU | hit@0.5 | random IoU | random hit@0.5 |
+|---|---|---|---|---|---|---|
+| chain GRPO (CLEVRER only) | 18 | 0.889 | 0.254 | 0.125 | 0.100 | 0.000 |
+| mix chain SFT | 14274 | 0.900 | 0.544 | 0.603 | 0.230 | 0.180 |
+| + chain GRPO | 14395 | 0.916 | 0.558 | 0.624 | 0.238 | 0.194 |
+| real chain SFT | 14410 | 0.893 | 0.535 | 0.598 | 0.224 | 0.172 |
+| + chain GRPO | 14448 | 0.908 | 0.545 | 0.620 | 0.234 | 0.182 |
+
+Per question type the numbers are flat (causal IoU 0.53-0.55, descriptive 0.55-0.57, temporal 0.53-0.56). Chain GRPO
+raises detection and IoU by 1-2 points over its SFT on both arms. Together with the cite-gap table this gives the
+real-video picture: the model names a plausible entity, puts the box on it, and answers from elsewhere.

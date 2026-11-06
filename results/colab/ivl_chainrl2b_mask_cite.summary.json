@@ -1,0 +1,74 @@
+{
+  "model": "/content/drive/MyDrive/causalsight/runs/internvl_stage2_outcome_only/adapter",
+  "bench": "clevrer",
+  "split": "validation",
+  "blind": false,
+  "instr": "chain",
+  "max_new_tokens": 640,
+  "mc": "option",
+  "max_pixels": null,
+  "batch_size": 8,
+  "mask": "cite",
+  "chains": "/content/drive/MyDrive/causalsight/results_v2/ivl_chainrl2b_plain.jsonl",
+  "per_type": null,
+  "seed": 0,
+  "max_frames": 16,
+  "n": 2532,
+  "seconds": 7498.0,
+  "overall": 0.7626382306477093,
+  "by_type": {
+    "descriptive": {
+      "n": 248,
+      "per_question": 0.7419354838709677
+    },
+    "explanatory": {
+      "n": 250,
+      "n_options": 903,
+      "per_option": 0.7940199335548173,
+      "per_question": 0.504
+    },
+    "predictive": {
+      "n": 250,
+      "n_options": 499,
+      "per_option": 0.7334669338677354,
+      "per_question": 0.532
+    },
+    "counterfactual": {
+      "n": 250,
+      "n_options": 882,
+      "per_option": 0.7528344671201814,
+      "per_question": 0.324
+    },
+    "inferential(per_question)": {
+      "n": 750,
+      "per_question": 0.4533333333333333
+    }
+  },
+  "chain": {
+    "counterfactual": {
+      "n": 882,
+      "format_rate": 0.9977324263038548,
+      "mean_steps": 3.994331065759637
+    },
+    "descriptive": {
+      "n": 248,
+      "format_rate": 1.0,
+      "mean_steps": 2.060483870967742
+    },
+    "explanatory": {
+      "n": 903,
+      "format_rate": 1.0,
+      "mean_steps": 4.283499446290144
+    },
+    "predictive": {
+      "n": 499,
+      "format_rate": 0.9979959919839679,
+      "mean_steps": 2.9899799599198396
+    },
+    "ALL": {
+      "n": 2532,
+      "format_rate": 0.9988151658767772,
+      "mean_steps": 3.7101105845181674
+    }
+  }
+}
