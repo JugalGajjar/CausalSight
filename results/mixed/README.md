@@ -2,7 +2,7 @@
 
 Arms: `mix` = 4,400 CLEVRER chains + 8,000 NExT-QA pseudo-labelled chains (teacher Qwen2.5-VL-7B steps, Grounding DINO boxes);
 `real` = the 8,000 NExT-QA chains only; `plain` = the mix with bare `<answer>` responses (same prompts, no chains).
-Each SFT arm is followed by 1,000 steps of GRPO (outcome + format) on 1,500 CLEVRER + 1,500 NExT-QA per-option items
+Each SFT arm is followed by 1,000 steps of GRPO (outcome + format) on 1,500 per-option items (750 CLEVRER + 750 NExT-QA)
 (`real` RL: NExT-QA only). All chain-style models answer one yes/no item per option. The plain GRPO arm never produced
 `<think>` text (its SFT taught bare answers), so it is an outcome-only RL control on bare answers.
 The plain SFT arm was trained with the chain instruction in the prompt and evaluated the same way.
