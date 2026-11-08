@@ -10,6 +10,8 @@ Track gap            = same with the evidence objects removed for the whole vide
 Cite gap             = same with the regions the model itself cited masked vs the same boxes at random
                        positions (mask_cite / mask_cite_random); needs no ground-truth evidence, so it
                        is the faithfulness test on real video
+Cite-track gap       = same with every detection of the cited entities on every sampled frame masked
+                       (mask_cite_track / mask_cite_track_random): the real-video analogue of the track gap
 All numbers per question type and overall, computed on the intersection of item ids, with paired
 bootstrap 95% CIs (2000 resamples over questions, so the per-option items of a question move together)
 for the gaps; seeded and order-independent, so a rerun reproduces the digits.
@@ -53,7 +55,7 @@ def load(path: Path) -> dict[str, dict]:
 
 
 def report(dir_: Path, tag: str) -> dict:
-    runs = {k: load(dir_ / f"{tag}_{k}.jsonl") for k in ("plain", "blind", "mask_evidence", "mask_random", "mask_track", "mask_track_random", "mask_cite", "mask_cite_random") if (dir_ / f"{tag}_{k}.jsonl").exists()}
+    runs = {k: load(dir_ / f"{tag}_{k}.jsonl") for k in ("plain", "blind", "mask_evidence", "mask_random", "mask_track", "mask_track_random", "mask_cite", "mask_cite_random", "mask_cite_track", "mask_cite_track_random") if (dir_ / f"{tag}_{k}.jsonl").exists()}
     if "plain" not in runs:
         raise SystemExit(f"missing {tag}_plain.jsonl in {dir_}")
     # track runs skip items without a same-size control; main stats use the non-track intersection,
@@ -62,7 +64,10 @@ def report(dir_: Path, tag: str) -> dict:
     ids = set.intersection(*(set(runs[k]) for k in main_keys))
     track_ids = set.intersection(ids, *(set(runs[k]) for k in runs if k.startswith("mask_track"))) if any(k.startswith("mask_track") for k in runs) else set()
     # cite runs cover only items whose plain chain cited a localizable region
-    cite_ids = set.intersection(ids, *(set(runs[k]) for k in runs if k.startswith("mask_cite"))) if any(k.startswith("mask_cite") for k in runs) else set()
+    cite_ids = set.intersection(ids, set(runs["mask_cite"]), set(runs["mask_cite_random"])) if "mask_cite" in runs and "mask_cite_random" in runs else set()
+    # entity-track runs (real video) may cover only the items correct under the plain input: their flip rates
+    # are over correct items anyway, so the subset changes nothing
+    ctrack_ids = set.intersection(ids, set(runs["mask_cite_track"]), set(runs["mask_cite_track_random"])) if "mask_cite_track" in runs and "mask_cite_track_random" in runs else set()
     by_type: dict[str, list[str]] = defaultdict(list)
     for i in sorted(ids):
         by_type[runs["plain"][i]["question_type"]].append(i)
@@ -89,6 +94,10 @@ def report(dir_: Path, tag: str) -> dict:
 
     def cite_gap(ids_: list[str]) -> float | None:
         a, b = flip("mask_cite", ids_), flip("mask_cite_random", ids_)
+        return None if a is None else a - b
+
+    def cite_track_gap(ids_: list[str]) -> float | None:
+        a, b = flip("mask_cite_track", ids_), flip("mask_cite_track_random", ids_)
         return None if a is None else a - b
 
     for t, tids in sorted(by_type.items()):
@@ -122,6 +131,14 @@ def report(dir_: Path, tag: str) -> dict:
                 row["flip_cite"], row["flip_cite_random"] = a, b
                 row["cite_gap"] = a - b
                 row["cite_gap_ci"] = _ci(cite_gap, ctids, rng, cluster=cluster)
+        cttids = [i for i in tids if i in ctrack_ids]
+        if cttids:
+            row["n_cite_track"] = len(cttids)
+            a, b = flip("mask_cite_track", cttids), flip("mask_cite_track_random", cttids)
+            if a is not None:
+                row["flip_cite_track"], row["flip_cite_track_random"] = a, b
+                row["cite_track_gap"] = a - b
+                row["cite_track_gap_ci"] = _ci(cite_track_gap, cttids, rng, cluster=cluster)
         out[t] = row
     return out
 
@@ -137,6 +154,8 @@ def main() -> None:
         cols += ["n_track", "flip_track", "flip_track_random", "track_gap", "track_gap_ci"]
     if any("cite_gap" in r for r in rep.values()):
         cols += ["n_cite", "flip_cite", "flip_cite_random", "cite_gap", "cite_gap_ci"]
+    if any("cite_track_gap" in r for r in rep.values()):
+        cols += ["n_cite_track", "flip_cite_track", "flip_cite_track_random", "cite_track_gap", "cite_track_gap_ci"]
 
     def fmt(v) -> str:
         if isinstance(v, tuple):

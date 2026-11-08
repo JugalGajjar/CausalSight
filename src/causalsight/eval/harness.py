@@ -104,6 +104,8 @@ def run(
     ids_file: Path | None = None,
     batch_size: int = 1,
     max_items: int | None = None,
+    tracks: Path | None = None,
+    item_ids: Path | None = None,
     **model_kw,
 ) -> dict:
     backend = load_backend(model, **model_kw)
@@ -112,11 +114,18 @@ def run(
         benchmark.mc_mode = mc
     if ids_file and hasattr(benchmark, "ids"):
         benchmark.ids = set(json.loads(Path(ids_file).read_text()))
-    cite = mask in ("cite", "cite_random")  # mask what a model itself cited (per item), from a harness output file
+    cite = mask in ("cite", "cite_random", "cite_track", "cite_track_random")  # mask what a model itself cited (per item), from a harness output file
+    track_index = None
     if cite:
         if not chains:
             raise ValueError("--mask cite needs --chains <harness per-item outputs jsonl of the citing model>")
         evidence = EvidenceIndex.from_outputs(chains)
+        if mask in ("cite_track", "cite_track_random"):
+            if not tracks:
+                raise ValueError("--mask cite_track needs --tracks <entity tracks json from cs-entity-tracks>")
+            from causalsight.eval.entity_tracks import EntityTrackIndex
+
+            track_index = EntityTrackIndex.load(tracks, chains)
     else:
         evidence = EvidenceIndex.from_chains(chains) if chains else None
     if mask != "none" and evidence is None:
@@ -133,9 +142,18 @@ def run(
     fout = out.open("w") if out else None
     items = list(benchmark.items(split, None if per_type else limit))
     qkey = lambda it: it.meta.get("qid", it.id)  # per-option items share the question's evidence
+    if track_index is not None:
+        regions_of = lambda it: track_index.get(it.id)  # entity tracks + own citations
+    elif cite:
+        regions_of = lambda it: evidence.get_cited(it.id)
+    else:
+        regions_of = lambda it: evidence.get(qkey(it)) if evidence else []
     if evidence is not None:
         # keep the item set identical across plain / blind / masked runs on the same chains file
-        items = [it for it in items if (evidence.get_cited(it.id) if cite else evidence.get(qkey(it)))]
+        items = [it for it in items if regions_of(it)]
+    if item_ids:
+        keep = set(json.loads(Path(item_ids).read_text()))
+        items = [it for it in items if it.id in keep]  # e.g. only items correct under the plain input
     if per_type:
         items = stratified_sample(items, per_type, seed, key=qkey)
     if max_items:
@@ -161,11 +179,15 @@ def run(
         pending.clear()
 
     for item in items:
-        regions = (evidence.get_cited(item.id) if cite else evidence.get(qkey(item))) if evidence else []
+        regions = regions_of(item)
         if mask != "none" and not regions:
             continue  # no localizable evidence for this item; skip so masked/unmasked sets match
         if mask in ("random", "cite_random"):
             regions = random_regions(regions, rng)
+        elif mask == "cite_track_random":
+            from causalsight.eval.entity_tracks import avoiding_random_regions
+
+            regions = avoiding_random_regions(regions, n_total, max_frames, rng)
         elif tracker is not None:
             scene_index = int(item.id.split("_")[0])
             decisive = track_evidence.get(qkey(item)) if track_evidence else []
@@ -243,12 +265,13 @@ def main() -> None:
     p.add_argument("--blind", action="store_true", help="replace the video with black frames")
     p.add_argument(
         "--mask",
-        choices=["none", "evidence", "random", "track", "track_random", "cite", "cite_random"],
+        choices=["none", "evidence", "random", "track", "track_random", "cite", "cite_random", "cite_track", "cite_track_random"],
         default="none",
         help="evidence: black out GT evidence boxes at their moments; random: same boxes at random positions; "
         "track: remove the decisive evidence objects for the whole video; track_random: same-size masks elsewhere; "
         "cite: black out the regions a model cited in its own chains (--chains = that model's per-item outputs); "
-        "cite_random: same boxes at random positions",
+        "cite_random: same boxes at random positions; cite_track: every detection of the cited entities on every sampled frame "
+        "(--tracks from cs-entity-tracks) plus the citations; cite_track_random: same-size boxes elsewhere on the same frames",
     )
     p.add_argument("--proposals-root", type=Path, default=None, help="CLEVRER derender proposals dir (track modes)")
     p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions (cite modes: a harness per-item outputs jsonl)")
@@ -259,6 +282,8 @@ def main() -> None:
     p.add_argument("--mc", choices=["multi", "option"], default="multi", help="multiple choice as one letters prompt, or one yes/no item per option (chain models)")
     p.add_argument("--frames-dir", type=Path, default=None, help="eval pack dir with frames/<video>/fNN.jpg (skips video decoding)")
     p.add_argument("--ids-file", type=Path, default=None, help="JSON list of question ids to evaluate (nextqa val subset)")
+    p.add_argument("--tracks", type=Path, default=None, help="entity tracks json from cs-entity-tracks (cite_track modes)")
+    p.add_argument("--item-ids", type=Path, default=None, help="JSON list of item ids to keep (e.g. items correct under the plain input)")
     p.add_argument("--batch-size", type=int, default=1, help="items per generate call; 16 on an 80 GB GPU, 1 on the Mac")
     p.add_argument("--max-items", type=int, default=None, help="pilot: stop after this many items of the stratified subset")
     p.add_argument("--max-frames", type=int, default=16)
@@ -273,7 +298,7 @@ def main() -> None:
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, ids_file=args.ids_file, batch_size=args.batch_size, max_items=args.max_items, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, ids_file=args.ids_file, batch_size=args.batch_size, max_items=args.max_items, tracks=args.tracks, item_ids=args.item_ids, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
     )
     print(json.dumps(summary, indent=2))
 
