@@ -106,6 +106,7 @@ def run(
     max_items: int | None = None,
     tracks: Path | None = None,
     item_ids: Path | None = None,
+    resume: bool = False,
     **model_kw,
 ) -> dict:
     backend = load_backend(model, **model_kw)
@@ -139,7 +140,22 @@ def run(
     t0 = time.time()
     if out:
         out.parent.mkdir(parents=True, exist_ok=True)
+    done: set[str] = set()
+    if resume and out and out.exists() and not out.with_suffix(".summary.json").exists():
+        # interrupted run: keep the finished items (a truncated last line is dropped), redo the rest
+        with out.open() as f:
+            for line in f:
+                try:
+                    r = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if r["id"] not in done:
+                    rows.append(r)
+                    done.add(r["id"])
+        print(f"resuming {out}: {len(done)} items already done")
     fout = out.open("w") if out else None
+    for r in rows:
+        fout.write(json.dumps(r) + "\n")
     items = list(benchmark.items(split, None if per_type else limit))
     qkey = lambda it: it.meta.get("qid", it.id)  # per-option items share the question's evidence
     if track_index is not None:
@@ -194,6 +210,8 @@ def run(
             regions = tracker.regions_for(scene_index, decisive, n_total, max_frames, control=(mask == "track_random"), rng=rng)
             if not regions:
                 continue  # decisive evidence matched no detection; skipped identically in both track modes
+        if item.id in done:
+            continue  # after the rng draws above, so the controls of the remaining items match a fresh run
         if backend.name == "dummy":
             frames = []
         else:
@@ -291,6 +309,7 @@ def main() -> None:
     p.add_argument("--max-pixels", type=int, default=None, help="legacy per-frame pixel cap (151200 reproduces pre-2026-09-20 evaluations); default matches training")
     p.add_argument("--init-adapter", default=None, help="adapter to merge before --model (normally found via the run's config.yaml)")
     p.add_argument("--out", type=Path, default=None)
+    p.add_argument("--resume", action="store_true", help="if --out exists without its .summary.json, keep its finished items and run only the rest")
     args = p.parse_args()
     root = args.root or Path("data/raw") / args.bench
     if args.split is None:
@@ -298,7 +317,7 @@ def main() -> None:
     summary = run(
         args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
         mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, ids_file=args.ids_file, batch_size=args.batch_size, max_items=args.max_items, tracks=args.tracks, item_ids=args.item_ids, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
+        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, ids_file=args.ids_file, batch_size=args.batch_size, max_items=args.max_items, tracks=args.tracks, item_ids=args.item_ids, resume=args.resume, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
     )
     print(json.dumps(summary, indent=2))
 

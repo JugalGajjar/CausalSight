@@ -169,3 +169,20 @@ def test_stratified_sample_keeps_options_together():
     items = [Item(f"q{i}_{o}", "predictive", Path("x"), "", "", meta={"qid": f"q{i}"}) for i in range(6) for o in range(3)]
     s = stratified_sample(items, 2, seed=0, key=lambda it: it.meta["qid"])
     assert len(s) == 6 and len({it.meta["qid"] for it in s}) == 2
+
+
+def test_resume_keeps_done_items_and_drops_truncated_line(tmp_path):
+    root = fake_clevrer(tmp_path)
+    out = tmp_path / "o.jsonl"
+    full = run("dummy", "clevrer", "validation", root, out, None, False, 16)
+    lines = out.read_text().splitlines()
+    assert full["n"] == len(lines) >= 2
+    # simulate an interrupted run: first item complete, second cut mid-line, no summary
+    out.write_text(lines[0] + "\n" + lines[1][: len(lines[1]) // 2])
+    out.with_suffix(".summary.json").unlink()
+    again = run("dummy", "clevrer", "validation", root, out, None, False, 16, resume=True)
+    assert again["n"] == full["n"] and [json.loads(l)["id"] for l in out.read_text().splitlines()] == [json.loads(l)["id"] for l in lines]
+    assert out.with_suffix(".summary.json").exists()
+    # with a summary present, resume is a no-op and the run starts over cleanly
+    fresh = run("dummy", "clevrer", "validation", root, out, None, False, 16, resume=True)
+    assert fresh["n"] == full["n"]

@@ -5,7 +5,8 @@
 # Needs in RESULTS_DIR: <tag>_nq_plain.jsonl (the citing run) and nextqa_entity_tracks.json (from cs-entity-tracks, or
 # set TRACKS=...). item_ids_json (optional) restricts the run to a list of item ids, e.g. the items correct under the
 # plain input (data/subsets/<tag>_nq_plain_correct_ids.json): only those enter the flip rates, so the gap is unchanged
-# and the run is ~15% shorter. Re-running skips conditions whose summary exists.
+# and the run is ~15% shorter. Re-running skips conditions whose summary exists and resumes a half-finished one from
+# its per-item file (cs-eval --resume).
 set -euo pipefail
 MODEL="$1"; TAG="$2"; IDS="${3:-}"
 INSTR="${INSTR:-chain}"; MAXTOK="${MAXTOK:-640}"; MC="${MC:-option}"; BATCH="${BATCH:-8}"
@@ -14,7 +15,7 @@ CHAINS="$OUT/${TAG}_nq_plain.jsonl"
 [ -f "$CHAINS" ] || { echo "missing $CHAINS"; exit 1; }
 [ -f "$TRACKS" ] || { echo "missing $TRACKS (run cs-entity-tracks first)"; exit 1; }
 COMMON=(--bench nextqa --split val --root "$PACK" --frames-dir "$PACK" --ids-file "$PACK/nextqa_val_ids.json"
-        --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK" --mc "$MC" --batch-size "$BATCH" --chains "$CHAINS" --tracks "$TRACKS")
+        --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK" --mc "$MC" --batch-size "$BATCH" --chains "$CHAINS" --tracks "$TRACKS" --resume)
 [ -n "$IDS" ] && COMMON+=(--item-ids "$IDS")
 [ -f "$OUT/${TAG}_nq_mask_cite_track.summary.json" ] || cs-eval "${COMMON[@]}" --mask cite_track --out "$OUT/${TAG}_nq_mask_cite_track.jsonl"
 [ -f "$OUT/${TAG}_nq_mask_cite_track_random.summary.json" ] || cs-eval "${COMMON[@]}" --mask cite_track_random --out "$OUT/${TAG}_nq_mask_cite_track_random.jsonl"
