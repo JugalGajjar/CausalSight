@@ -11,7 +11,8 @@ Cite gap             = same with the regions the model itself cited masked vs th
                        positions (mask_cite / mask_cite_random); needs no ground-truth evidence, so it
                        is the faithfulness test on real video
 All numbers per question type and overall, computed on the intersection of item ids, with paired
-bootstrap 95% CIs (2000 resamples over items) for the two gaps.
+bootstrap 95% CIs (2000 resamples over questions, so the per-option items of a question move together)
+for the gaps; seeded and order-independent, so a rerun reproduces the digits.
 """
 
 from __future__ import annotations
@@ -25,12 +26,19 @@ from pathlib import Path
 N_BOOT = 2000
 
 
-def _ci(values_fn, tids: list[str], rng: random.Random, n_boot: int = N_BOOT) -> tuple[float, float]:
-    """Paired bootstrap over item ids: resample items, recompute the statistic, take the 2.5/97.5 percentiles."""
+def _ci(values_fn, tids: list[str], rng: random.Random, n_boot: int = N_BOOT, cluster: dict[str, str] | None = None) -> tuple[float, float]:
+    """Paired bootstrap with 95% percentile interval. Items are resampled in clusters (one cluster per
+    question, so the per-option items of one question move together), the statistic is recomputed on
+    the resampled items, and the 2.5/97.5 percentiles are taken. Without `cluster` every item is its
+    own cluster. `tids` must be in a deterministic order for the seeded draws to be reproducible."""
+    groups: dict[str, list[str]] = defaultdict(list)
+    for i in tids:
+        groups[cluster.get(i, i) if cluster else i].append(i)
+    keys = sorted(groups)
     stats = []
-    n = len(tids)
+    n = len(keys)
     for _ in range(n_boot):
-        sample = [tids[rng.randrange(n)] for _ in range(n)]
+        sample = [i for _k in range(n) for i in groups[keys[rng.randrange(n)]]]
         v = values_fn(sample)
         if v is not None:
             stats.append(v)
@@ -56,9 +64,11 @@ def report(dir_: Path, tag: str) -> dict:
     # cite runs cover only items whose plain chain cited a localizable region
     cite_ids = set.intersection(ids, *(set(runs[k]) for k in runs if k.startswith("mask_cite"))) if any(k.startswith("mask_cite") for k in runs) else set()
     by_type: dict[str, list[str]] = defaultdict(list)
-    for i in ids:
+    for i in sorted(ids):
         by_type[runs["plain"][i]["question_type"]].append(i)
-    by_type["ALL"] = list(ids)
+    by_type["ALL"] = sorted(ids)
+    # bootstrap clusters: all per-option items of one question resample together
+    cluster = {i: str(runs["plain"][i].get("qid") or runs["plain"][i].get("qset") or i) for i in ids}
     out: dict[str, dict] = {}
     rng = random.Random(0)
 
@@ -87,7 +97,7 @@ def report(dir_: Path, tag: str) -> dict:
         if "blind" in acc:
             row["acc_blind"] = acc["blind"]
             row["blind_gap"] = blind_gap(tids)
-            row["blind_gap_ci"] = _ci(blind_gap, tids, rng)
+            row["blind_gap_ci"] = _ci(blind_gap, tids, rng, cluster=cluster)
         for k in ("mask_evidence", "mask_random"):
             if k in runs:
                 v = flip(k, tids)
@@ -95,7 +105,7 @@ def report(dir_: Path, tag: str) -> dict:
                     row[f"flip_{k[5:]}"] = v
         if "flip_evidence" in row and "flip_random" in row:
             row["es_gap"] = row["flip_evidence"] - row["flip_random"]
-            row["es_gap_ci"] = _ci(es_gap, tids, rng)
+            row["es_gap_ci"] = _ci(es_gap, tids, rng, cluster=cluster)
         ttids = [i for i in tids if i in track_ids]
         if ttids and "mask_track" in runs and "mask_track_random" in runs:
             row["n_track"] = len(ttids)
@@ -103,7 +113,7 @@ def report(dir_: Path, tag: str) -> dict:
             if a is not None:
                 row["flip_track"], row["flip_track_random"] = a, b
                 row["track_gap"] = a - b
-                row["track_gap_ci"] = _ci(track_gap, ttids, rng)
+                row["track_gap_ci"] = _ci(track_gap, ttids, rng, cluster=cluster)
         ctids = [i for i in tids if i in cite_ids]
         if ctids and "mask_cite" in runs and "mask_cite_random" in runs:
             row["n_cite"] = len(ctids)
@@ -111,7 +121,7 @@ def report(dir_: Path, tag: str) -> dict:
             if a is not None:
                 row["flip_cite"], row["flip_cite_random"] = a, b
                 row["cite_gap"] = a - b
-                row["cite_gap_ci"] = _ci(cite_gap, ctids, rng)
+                row["cite_gap_ci"] = _ci(cite_gap, ctids, rng, cluster=cluster)
         out[t] = row
     return out
 

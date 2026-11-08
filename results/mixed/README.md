@@ -40,7 +40,7 @@ in the same per-option format (their letters-prompt accuracy: base 0.730, GRPO b
 | mix plain SFT, seed 1 | 0.864 | 0.973 | 0.880 | 0.856 | 0.903 | 0.42 | 0.45 | n/a (no chains) |
 | + plain GRPO | 0.904 | 0.971 | 0.892 | 0.843 | 0.904 | 0.39 | 0.49 | n/a (no chains) |
 | mix chain SFT | 0.860 | 0.648 | 0.798 | 0.763 | 0.739 | 0.27 | 0.49 | 0.56 / 0.63 / 0.70 / 0.72 |
-| mix chain SFT, seed 1 | (running) | | | | | | | |
+| mix chain SFT, seed 1 | 0.856 | 0.697 | 0.800 | 0.770 | 0.758 | 0.27 | 0.53 | 0.57 / 0.62 / 0.69 / 0.71 |
 | + chain GRPO | 0.880 | 0.756 | 0.764 | 0.759 | 0.771 | 0.29 | 0.48 | 0.54 / 0.62 / 0.70 / 0.70 |
 | real chain SFT | 0.476 | 0.512 | 0.622 | 0.521 | 0.533 | 0.06 | 0.46 | 0.27 / 0.22 / 0.15 / 0.19 |
 | + chain GRPO | 0.464 | 0.485 | 0.674 | 0.529 | 0.535 | 0.08 | 0.44 | 0.24 / 0.22 / 0.18 / 0.18 |
@@ -78,6 +78,8 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    (ALL 0.851 to 0.739), while the plain mix on the same 4,400 CLEVRER questions reaches 0.970 explanatory (ALL 0.906),
    the best CLEVRER numbers of any model. Chain GRPO recovers part of the loss (explanatory 0.756). Object grounding of
    the mixed chains on CLEVRER stays at the CLEVRER-only level (box IoU 0.63-0.72).
+   The second chain seed reproduces the cost (explanatory 0.697, ALL 0.758, blind gap 0.27, track gap
+   0.53, box IoU 0.65), so it is a property of the recipe, not of one run.
 4. **Real-only chains do not transfer to CLEVRER** (ALL 0.53, blind gap 0.06, box IoU 0.15-0.27): the synthetic chains
    are needed for synthetic grounding, so the mix is the only arm that is grounded on both.
 5. **CausalVQA does not move.** Every arm stays at set accuracy <= 0.09 and now says "yes" to 67-84% of options.
@@ -127,7 +129,7 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
 For every item the regions cited in the model's own unmasked chain (`E: t=a-b box=...`, mapped from the 0-127 chain
 grid onto the 16 sampled frames; whole-frame boxes dropped) are blacked out (`mask_cite`); the control blacks out boxes
 of the same size on the same frames at random positions (`mask_cite_random`). `flip` = share of items correct in the
-plain run that become wrong; the cite gap is their paired difference with a bootstrap 95% CI. Items whose chain cites
+plain run that become wrong; the cite gap is their paired difference with a paired bootstrap 95% CI (resampled over questions, so the per-option items of one question move together; seeded). Items whose chain cites
 no localizable region are skipped (`n_cite` of 4,995). The last row masks the plain-SFT model, which writes no chains,
 with the mixed chain SFT model's citations: a check that the masking operation itself is neutral. The same test on
 CLEVRER (2,537 stratified per-option items; the gold evidence-span gap from the CLEVRER suite alongside) follows.
