@@ -44,3 +44,5 @@ paper/
 
 # causalvqa raw data and packs
 data/raw/causalvqa/
+data/mix/
+results/mixed/pseudolabel_audit.html
