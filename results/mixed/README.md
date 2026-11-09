@@ -145,22 +145,22 @@ written under the mask that cite the blacked-out box again (cited mask / random 
 | model | cite gap, correct option | cite gap, wrong option | entity-track, correct option | entity-track, wrong option | cite gap, all-hit items | masked % | re-cite |
 |---|---|---|---|---|---|---|---|
 | chain GRPO (CLEVRER only) | 0.000 [-0.019,0.019] | 0.019 [0.007,0.032] | -- | -- | -- | 1.4 | 0.49 / 0.57 |
-| mix chain SFT | 0.012 [-0.001,0.026] | 0.001 [-0.004,0.005] | 0.098 [0.069,0.127] | 0.037 [0.026,0.048] | 0.011 [0.004,0.019] | 3.9 | 0.14 / 0.52 |
-| mix chain SFT, seed 1 | 0.003 [-0.010,0.015] | 0.003 [-0.001,0.007] | -- | -- | 0.005 [-0.003,0.013] | 3.5 | 0.16 / 0.53 |
-| mix chain GRPO | 0.010 [0.001,0.018] | 0.002 [-0.003,0.007] | -- | -- | -0.001 [-0.009,0.007] | 3.6 | 0.15 / 0.52 |
-| real chain SFT | 0.006 [-0.005,0.017] | 0.003 [-0.003,0.008] | -- | -- | -0.001 [-0.010,0.008] | 4.0 | 0.15 / 0.54 |
-| real chain GRPO | 0.005 [-0.004,0.014] | -0.000 [-0.004,0.003] | 0.109 [0.081,0.137] | 0.031 [0.022,0.041] | 0.000 [-0.006,0.006] | 4.1 | 0.17 / 0.55 |
+| mix chain SFT | 0.012 [-0.001,0.026] | 0.001 [-0.004,0.006] | 0.098 [0.069,0.127] | 0.037 [0.026,0.048] | 0.011 [0.004,0.019] | 3.9 | 0.14 / 0.52 |
+| mix chain SFT, seed 1 | 0.003 [-0.010,0.015] | 0.003 [-0.001,0.008] | -- | -- | 0.005 [-0.004,0.014] | 3.5 | 0.16 / 0.53 |
+| mix chain GRPO | 0.010 [0.001,0.018] | 0.002 [-0.002,0.007] | -- | -- | -0.001 [-0.009,0.007] | 3.6 | 0.15 / 0.52 |
+| real chain SFT | 0.006 [-0.005,0.017] | 0.003 [-0.003,0.009] | -- | -- | -0.001 [-0.010,0.008] | 4.0 | 0.15 / 0.54 |
+| real chain GRPO | 0.005 [-0.004,0.014] | -0.000 [-0.004,0.004] | 0.109 [0.084,0.134] | 0.031 [0.023,0.040] | 0.000 [-0.006,0.006] | 4.1 | 0.17 / 0.55 |
 | control: mix plain SFT | 0.002 [-0.005,0.010] | -0.003 [-0.007,0.001] | -- | -- | -- | 3.9 | -- |
 
 CLEVRER (descriptive questions excluded from the gold split):
 
 | model | cite gap, correct option | cite gap, wrong option | gold-evidence gap, correct | gold-evidence gap, wrong | masked % | re-cite |
 |---|---|---|---|---|---|---|
-| chain GRPO (CLEVRER only) | 0.054 [0.035,0.074] | 0.051 [0.032,0.070] | 0.077 [0.051,0.104] | 0.073 [0.050,0.096] | 1.9 | 0.44 / 0.75 |
-| mix chain SFT | 0.088 [0.061,0.116] | 0.106 [0.078,0.134] | 0.087 [0.061,0.115] | 0.108 [0.074,0.143] | 2.4 | 0.48 / 0.81 |
-| mix chain GRPO | 0.029 [0.016,0.044] | 0.074 [0.047,0.101] | 0.050 [0.033,0.067] | 0.100 [0.070,0.134] | 1.4 | 0.53 / 0.83 |
-| real chain GRPO | 0.021 [0.004,0.037] | 0.027 [0.009,0.045] | 0.078 [0.051,0.105] | 0.050 [0.023,0.077] | 0.4 | 0.45 / 0.77 |
-| InternVL3-2B chain GRPO | 0.055 [0.039,0.073] | 0.034 [0.018,0.052] | 0.084 [0.062,0.107] | 0.068 [0.048,0.087] | 0.5 | 0.58 / 0.83 |
+| chain GRPO (CLEVRER only) | 0.054 [0.035,0.074] | 0.051 [0.033,0.070] | 0.077 [0.052,0.104] | 0.073 [0.051,0.094] | 1.9 | 0.44 / 0.75 |
+| mix chain SFT | 0.088 [0.061,0.116] | 0.106 [0.077,0.135] | 0.087 [0.061,0.115] | 0.108 [0.075,0.140] | 2.4 | 0.48 / 0.81 |
+| mix chain GRPO | 0.029 [0.016,0.044] | 0.074 [0.047,0.101] | 0.050 [0.034,0.067] | 0.100 [0.069,0.132] | 1.4 | 0.53 / 0.83 |
+| real chain GRPO | 0.021 [0.004,0.037] | 0.027 [0.008,0.046] | 0.078 [0.052,0.105] | 0.050 [0.023,0.077] | 0.4 | 0.45 / 0.77 |
+| InternVL3-2B chain GRPO | 0.055 [0.039,0.073] | 0.034 [0.018,0.052] | 0.084 [0.063,0.106] | 0.068 [0.048,0.086] | 0.5 | 0.58 / 0.83 |
 
 Reading: (a) the NExT-QA cite-gap null is not dilution by rejections (<= 0.012 on correct options) and not misplaced
 boxes (<= 0.011 where every box hits); (b) the entity-track gap is concentrated on correct options (0.10-0.11); (c) on
@@ -170,6 +170,52 @@ as chain models (gold-evidence gap: zero-shot base 0.063, outcome-only GRPO 0.09
 needed; (e) under the cited-box mask the real-video models re-cite the same box in 14-17% of steps vs 52-55% under
 the random mask: the citation follows the pixels, the answer does not. Box IoU over seeds (rescored 2026-11-09):
 chain GRPO 0.654 / 0.665 / 0.660, CSR 0.668 / 0.666, CSR without necessity 0.637, step-level credit 0.3: 0.658.
+
+## Pooled estimates, bounds and control overlap (added 2026-11-09)
+
+`cs-faithfulness-splits results/colab --pool <tags> --name <name>` pools the items of several models (a question's
+items from every model form one bootstrap cluster) and writes `<name>_pooled.json`. `flip` is the intervention's own
+flip rate with its CI: a gap cannot exceed it under any control. Pools: the five CLEVRER chain models
+(`clevrer_chain`) and the five models trained on NExT-QA chains (`nq_real`).
+
+| test | n correct | flip [95% CI] | control | ratio | gap [95% CI] |
+|---|---|---|---|---|---|
+| CLEVRER, cited boxes, all items | 9403 | 0.097 [0.090,0.105] | 0.045 | 2.2 | 0.053 [0.045,0.060] |
+| CLEVRER, cited boxes, correct options | 4596 | 0.090 [0.079,0.102] | 0.040 | 2.2 | 0.050 [0.040,0.059] |
+| CLEVRER, gold evidence boxes, all items | 9433 | 0.144 [0.133,0.155] | 0.068 | 2.1 | 0.076 [0.066,0.085] |
+| CLEVRER, object track (gold objects), all items | 8922 | 0.563 [0.548,0.578] | 0.067 | 8.3 | 0.495 [0.479,0.511] |
+| NExT-QA, cited boxes, all items | 20666 | 0.023 [0.021,0.026] | 0.021 | 1.1 | 0.003 [0.001,0.005] |
+| NExT-QA, cited boxes, correct options | 3988 | 0.036 [0.029,0.043] | 0.029 | 1.2 | 0.007 [0.002,0.012] |
+| NExT-QA, entity track (2 models), all items | 8227 | 0.102 [0.093,0.112] | 0.055 | 1.9 | 0.047 [0.039,0.055] |
+| NExT-QA, entity track (2 models), correct options | 1556 | 0.180 [0.157,0.203] | 0.076 | 2.4 | 0.103 [0.081,0.126] |
+
+The pooled NExT-QA cite gap is small but its interval excludes zero, so the paper says "0.003, an order of magnitude
+below CLEVRER" and never "zero". The entity-track gap exceeds the upper bound of the cited-box flip rate (2.6%, 4.3%
+on correct options), so the difference between the two tests is not an artefact of their controls.
+
+Control overlap. The cite_random control is a seeded draw in output order, so `cs-faithfulness-splits` replays it
+exactly and measures how much of the cited area the control also blacks out. "frames" = sampled frames a cited
+region is applied to; "untouched" = items whose cited area the control does not touch:
+
+| model | frames per citation | cited area covered by control (%) | untouched items (%) | flip (cited), untouched | cite gap, untouched |
+|---|---|---|---|---|---|
+| mix chain SFT | 2.0 | 40 | 18 | 0.020 | 0.003 [-0.007,0.013] |
+| mix chain SFT, seed 1 | 2.0 | 39 | 20 | 0.019 | 0.005 [-0.004,0.015] |
+| mix chain GRPO | 2.0 | 40 | 21 | 0.015 | 0.005 [-0.005,0.014] |
+| real chain SFT | 2.0 | 38 | 17 | 0.026 | 0.000 [-0.013,0.014] |
+| real chain GRPO | 2.0 | 38 | 17 | 0.019 | 0.006 [-0.003,0.016] |
+| CLEVRER: chain GRPO | 1.4 | 9 | 41 | 0.088 | 0.071 [0.053,0.090] |
+| CLEVRER: mix chain SFT | 1.5 | 10 | 40 | 0.121 | 0.093 [0.069,0.117] |
+| CLEVRER: mix chain GRPO | 1.4 | 8 | 49 | 0.067 | 0.050 [0.035,0.066] |
+| CLEVRER: real chain GRPO | 2.0 | 6 | 66 | 0.068 | 0.036 [0.021,0.052] |
+| CLEVRER: InternVL3-2B chain GRPO | 1.2 | 8 | 49 | 0.083 | 0.052 [0.034,0.069] |
+
+On NExT-QA the boxes are large and the control covers 38-40% of the cited area (6-10% on CLEVRER), so the full-set
+control is a weaker contrast there; on the untouched subset the NExT-QA gap is still 0.000-0.006 with every interval
+including zero. Entities from the question text: the entity-track gap is as large on items whose named entities do
+not appear in the question or option text (0.045, 0.053) as on those where they do (0.052, 0.038), see `by_text` in
+the splits files. Training data note: `real_chains_sft.jsonl` has 8,000 items (4,000 yes, 4,000 no) from 5,283
+questions; where both items of a question are present (2,717 questions) their steps are identical.
 
 ## Manual audit of the pseudo-labelled chains
 

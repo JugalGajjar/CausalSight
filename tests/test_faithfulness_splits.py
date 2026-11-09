@@ -3,7 +3,7 @@
 import json
 
 from causalsight.eval.cite_grounding import frame_of
-from causalsight.eval.faithfulness.splits import cited_steps, hit_status, recite, splits
+from causalsight.eval.faithfulness.splits import cited_steps, control_coverage, entities_in_text, hit_status, pooled, recite, splits
 
 CH = lambda box, t="4-12", ent="the dog": f"<think>\n[1] Q: Where is {ent}? | A: {ent} | E: t={t} box=({box}) | deps=\n</think>\n<answer>yes</answer>"
 
@@ -46,3 +46,26 @@ def test_splits_by_gold_separates_affirmations_from_rejections(tmp_path):
     assert s["by_gold"]["yes"]["cite"]["gap"] == 0.5 and s["by_gold"]["no"]["cite"]["gap"] == 0.0
     assert s["by_gold"]["yes"]["blind_flip"] == 1.0 and s["by_gold"]["no"]["blind_flip"] == 0.0
     assert abs(s["area"]["mask_cite"] - 0.05) < 1e-9 and s["recite"]["cite"]["same_box"] == 1.0
+
+
+def test_entities_in_text_and_control_replay(tmp_path):
+    raw = CH("0.100,0.200,0.400,0.600")
+    assert entities_in_text(raw, "what does the dog do?\nOption A: bark\nIs this option correct? Answer yes or no.") is True
+    assert entities_in_text(raw, "what happens at the end?\nOption A: bark\nIs this option correct?") is False
+    assert entities_in_text("<answer>yes</answer>", "what does the dog do?") is None
+    rows = [{"id": f"q{i}_0", "raw": raw, "correct": 1} for i in range(50)]
+    write(tmp_path, "plain", rows)
+    cov = control_coverage(tmp_path / "m_plain.jsonl", {r["id"]: r for r in rows})
+    assert len(cov) == 50 and all(0.0 <= v <= 1.0 for v in cov.values())
+    assert cov == control_coverage(tmp_path / "m_plain.jsonl", {r["id"]: r for r in rows})  # seeded: replays exactly
+    assert any(v == 0 for v in cov.values()) and any(v > 0 for v in cov.values())
+
+
+def test_pooled_keeps_questions_as_clusters(tmp_path):
+    for tag, flips in (("a", {"q0_0"}), ("b", {"q0_0", "q1_0"})):
+        ids = [f"q{i}_0" for i in range(4)]
+        mk = lambda fn: [{"id": i, "qid": i.split("_")[0], "question_type": "causal", "gold": "yes", "correct": fn(i), "raw": CH("0.100,0.200,0.400,0.600")} for i in ids]
+        for name, fn in (("plain", lambda i: 1), ("mask_cite", lambda i: 0 if i in flips else 1), ("mask_cite_random", lambda i: 1)):
+            (tmp_path / f"{tag}_{name}.jsonl").write_text("\n".join(json.dumps(r) for r in mk(fn)) + "\n")
+    r = pooled(tmp_path, ["a", "b"])
+    assert r["cite"]["all"]["n_correct"] == 8 and abs(r["cite"]["all"]["gap"] - 3 / 8) < 1e-9 and r["cite"]["yes"]["n_correct"] == 8
