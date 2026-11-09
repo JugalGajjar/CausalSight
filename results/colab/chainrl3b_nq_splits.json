@@ -1,0 +1,76 @@
+{
+ "tag": "chainrl3b_nq",
+ "by_gold": {
+  "yes": {
+   "n": 999,
+   "blind_flip": 0.34210526315789475,
+   "cite": {
+    "n_correct": 787,
+    "flip": 0.062261753494282084,
+    "flip_control": 0.062261753494282084,
+    "gap": 0.0,
+    "gap_ci": [
+     -0.018963337547408338,
+     0.01925545571245186
+    ]
+   }
+  },
+  "no": {
+   "n": 3996,
+   "blind_flip": 0.3911877394636015,
+   "cite": {
+    "n_correct": 2449,
+    "flip": 0.09228256431196406,
+    "flip_control": 0.07309105757452021,
+    "gap": 0.019191506737443853,
+    "gap_ci": [
+     0.0065279477764177835,
+     0.03189726594863297
+    ]
+   }
+  }
+ },
+ "area": {
+  "mask_cite": 0.013727987421383842,
+  "mask_cite_random": 0.013727966457023254
+ },
+ "recite": {
+  "cite": {
+   "items": 4709,
+   "steps": 12354,
+   "same_box": 0.4879391290270358,
+   "same_frame_other_place": 0.33041929739355674,
+   "other_frame": 0.18164157357940747,
+   "same_entities": 0.4090909090909091,
+   "items_without_citation_under_mask": 61
+  },
+  "cite_random": {
+   "items": 4717,
+   "steps": 12381,
+   "same_box": 0.5689362733220257,
+   "same_frame_other_place": 0.2714643405217672,
+   "other_frame": 0.15959938615620708,
+   "same_entities": 0.5909090909090909,
+   "items_without_citation_under_mask": 53
+  }
+ },
+ "by_hit": {
+  "all": {
+   "n": 0,
+   "cite": null
+  },
+  "not_all": {
+   "n": 22,
+   "cite": {
+    "n_correct": 16,
+    "flip": 0.0,
+    "flip_control": 0.0,
+    "gap": 0.0,
+    "gap_ci": [
+     0.0,
+     0.0
+    ]
+   }
+  }
+ }
+}

@@ -1,0 +1,111 @@
+{
+ "tag": "chainrl3b",
+ "by_gold": {
+  "yes": {
+   "n": 1154,
+   "blind_flip": 0.4594059405940594,
+   "cite": {
+    "n_correct": 1006,
+    "flip": 0.09045725646123261,
+    "flip_control": 0.036779324055666,
+    "gap": 0.053677932405566606,
+    "gap_ci": [
+     0.034895314057826525,
+     0.07390084190832555
+    ]
+   },
+   "gold_evidence": {
+    "n_correct": 1010,
+    "flip": 0.1405940594059406,
+    "flip_control": 0.06336633663366337,
+    "gap": 0.07722772277227724,
+    "gap_ci": [
+     0.050930460333006855,
+     0.10358180058083254
+    ]
+   },
+   "object_track": {
+    "n_correct": 963,
+    "flip": 0.6583592938733126,
+    "flip_control": 0.037383177570093455,
+    "gap": 0.6209761163032191,
+    "gap_ci": [
+     0.582441113490364,
+     0.6597938144329897
+    ]
+   }
+  },
+  "no": {
+   "n": 1170,
+   "blind_flip": 0.45363908275174475,
+   "cite": {
+    "n_correct": 1000,
+    "flip": 0.084,
+    "flip_control": 0.033,
+    "gap": 0.051000000000000004,
+    "gap_ci": [
+     0.0315893385982231,
+     0.06952965235173823
+    ]
+   },
+   "gold_evidence": {
+    "n_correct": 1003,
+    "flip": 0.11266201395812563,
+    "flip_control": 0.03988035892323031,
+    "gap": 0.07278165503489531,
+    "gap_ci": [
+     0.050352467270896276,
+     0.095703125
+    ]
+   },
+   "object_track": {
+    "n_correct": 954,
+    "flip": 0.3584905660377358,
+    "flip_control": 0.03459119496855346,
+    "gap": 0.3238993710691824,
+    "gap_ci": [
+     0.28207847295864263,
+     0.3641133263378804
+    ]
+   }
+  }
+ },
+ "area": {
+  "mask_cite": 0.01902493074792249,
+  "mask_cite_random": 0.01902493074792249,
+  "mask_evidence": 0.02619692550256217,
+  "mask_random": 0.02619692550256217,
+  "mask_track": 0.005023702781237024,
+  "mask_track_random": 0.005023702781237024
+ },
+ "recite": {
+  "cite": {
+   "items": 2526,
+   "steps": 10362,
+   "same_box": 0.44344721096313455,
+   "same_frame_other_place": 0.287492762015055,
+   "other_frame": 0.2690600270218105,
+   "same_entities": null,
+   "items_without_citation_under_mask": 1
+  },
+  "cite_random": {
+   "items": 2525,
+   "steps": 10342,
+   "same_box": 0.7457938503190872,
+   "same_frame_other_place": 0.13537033455811254,
+   "other_frame": 0.11883581512280023,
+   "same_entities": null,
+   "items_without_citation_under_mask": 2
+  }
+ },
+ "by_hit": {
+  "all": {
+   "n": 0,
+   "cite": null
+  },
+  "not_all": {
+   "n": 0,
+   "cite": null
+  }
+ }
+}

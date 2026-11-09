@@ -1,0 +1,67 @@
+{
+ "tag": "mixplainsft3b_nq",
+ "by_gold": {
+  "yes": {
+   "n": 999,
+   "blind_flip": 0.32947976878612717,
+   "cite": {
+    "n_correct": 850,
+    "flip": 0.015294117647058824,
+    "flip_control": 0.012941176470588235,
+    "gap": 0.002352941176470589,
+    "gap_ci": [
+     -0.004784688995215312,
+     0.010452961672473868
+    ]
+   }
+  },
+  "no": {
+   "n": 3996,
+   "blind_flip": 0.19031566043518236,
+   "cite": {
+    "n_correct": 3211,
+    "flip": 0.01339146683276238,
+    "flip_control": 0.0165057614450327,
+    "gap": -0.0031142946122703196,
+    "gap_ci": [
+     -0.006548175865294669,
+     0.0006205398696866263
+    ]
+   }
+  }
+ },
+ "area": {
+  "mask_cite": 0.03942763962494906,
+  "mask_cite_random": 0.0394276600081533
+ },
+ "recite": {
+  "cite": {
+   "items": 0,
+   "steps": 0,
+   "same_box": 0.0,
+   "same_frame_other_place": 0.0,
+   "other_frame": 0.0,
+   "same_entities": null,
+   "items_without_citation_under_mask": 0
+  },
+  "cite_random": {
+   "items": 0,
+   "steps": 0,
+   "same_box": 0.0,
+   "same_frame_other_place": 0.0,
+   "other_frame": 0.0,
+   "same_entities": null,
+   "items_without_citation_under_mask": 0
+  }
+ },
+ "by_hit": {
+  "all": {
+   "n": 0,
+   "cite": null
+  },
+  "not_all": {
+   "n": 0,
+   "cite": null
+  }
+ }
+}

@@ -99,7 +99,8 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    gap is as large as the gold evidence-span gap (mixed chain SFT 0.089 vs 0.094, mixed chain GRPO 0.042 vs 0.067).
    On NExT-QA the same models have cite gaps of 0.001-0.004 with CIs that include zero (mixed chain GRPO 0.042 on
    CLEVRER vs 0.004 on NExT-QA), while blacking out the whole video still costs them 15-25 points. The real-video
-   citations are well formed and point at real regions, but the answer is computed from the rest of the frames. The
+   citations are well formed and point at real regions, but the cited box is not necessary for the answer (see
+   item 8 and the splits below for what is: the cited entity, partly). The
    CLEVRER-only chain GRPO model is the one model with a small real-video gap (0.015 [0.00,0.02]) on a 7%
    random-flip floor, and the cross-model control (-0.002) confirms the masking operation itself is neutral.
    Both halves replicate: the second mixed chain SFT seed has the same NExT-QA cite gap (0.003 [-0.00,0.01]),
@@ -114,8 +115,11 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    detection plus the cited boxes is blacked out, against same-size boxes elsewhere on the same frames. For the mixed
    chain SFT and the real chain GRPO models the gap rises from 0.001-0.003 (one box on a few frames) to 0.046-0.048
    [0.04,0.06] (the entity gone from every frame), against blind gaps of 0.154-0.223 and CLEVRER object-track gaps
-   of 0.44-0.49 for the same models. Redundancy is real but small: with everything the chain names removed
-   everywhere, nine in ten correct answers stand (94-95% under the control). The remainder points at the supervision: pseudo-labelled chains (teacher steps plus detector boxes)
+   of 0.44-0.49 for the same models. Pooled, nine in ten correct answers stand (94-95% under the control), but the pooled
+   number is diluted by the 80% of items that are correct rejections: on the items whose option is correct the
+   entity-track gap is 0.098 [0.069,0.127] and 0.109 [0.081,0.137] (flips 19.4% vs 9.6% and 16.7% vs 5.8%), against
+   blind flips of 21% and 34% on the same items. So the cited box is unnecessary, the cited entity is moderately
+   necessary, and "decorative" is too strong a word for the real-video citations. The remainder points at the supervision: pseudo-labelled chains (teacher steps plus detector boxes)
    taught the model to cite objects that are not the decisive evidence.
 9. **The real-video citations are not garbage: they land on the named object.** Re-detecting the entity each step
    names ("Where is the white dog?") with Grounding DINO on the cited frame (table below) finds it 87-93% of the
@@ -127,6 +131,45 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    artifact is visible in the outputs: 20-30% of the mixed models' chains (14% for the real-only arms) cite one
    identical box for every step, and in the blind condition 92-99% do, so a repeated box is the model's default
    when it has nothing to look at.
+
+## Splits of the self-citation results (`cs-faithfulness-splits`)
+
+`cs-faithfulness-splits results/colab --tag <tag> [--tracks results/colab/nextqa_entity_tracks.json]` writes
+`<tag>_splits.json`: every gap separately for correct options (gold "yes") and wrong options (gold "no"), split by
+whether every cited box hits the detector's box for the named entity (IoU >= 0.5), the masked area, and what the
+chain written under the mask cites. Same question-clustered bootstrap as the main report.
+
+NExT-QA. "all-hit" = items whose every cited box hits the detection (29-35% of items); "re-cite" = share of steps
+written under the mask that cite the blacked-out box again (cited mask / random mask):
+
+| model | cite gap, correct option | cite gap, wrong option | entity-track, correct option | entity-track, wrong option | cite gap, all-hit items | masked % | re-cite |
+|---|---|---|---|---|---|---|---|
+| chain GRPO (CLEVRER only) | 0.000 [-0.019,0.019] | 0.019 [0.007,0.032] | -- | -- | -- | 1.4 | 0.49 / 0.57 |
+| mix chain SFT | 0.012 [-0.001,0.026] | 0.001 [-0.004,0.005] | 0.098 [0.069,0.127] | 0.037 [0.026,0.048] | 0.011 [0.004,0.019] | 3.9 | 0.14 / 0.52 |
+| mix chain SFT, seed 1 | 0.003 [-0.010,0.015] | 0.003 [-0.001,0.007] | -- | -- | 0.005 [-0.003,0.013] | 3.5 | 0.16 / 0.53 |
+| mix chain GRPO | 0.010 [0.001,0.018] | 0.002 [-0.003,0.007] | -- | -- | -0.001 [-0.009,0.007] | 3.6 | 0.15 / 0.52 |
+| real chain SFT | 0.006 [-0.005,0.017] | 0.003 [-0.003,0.008] | -- | -- | -0.001 [-0.010,0.008] | 4.0 | 0.15 / 0.54 |
+| real chain GRPO | 0.005 [-0.004,0.014] | -0.000 [-0.004,0.003] | 0.109 [0.081,0.137] | 0.031 [0.022,0.041] | 0.000 [-0.006,0.006] | 4.1 | 0.17 / 0.55 |
+| control: mix plain SFT | 0.002 [-0.005,0.010] | -0.003 [-0.007,0.001] | -- | -- | -- | 3.9 | -- |
+
+CLEVRER (descriptive questions excluded from the gold split):
+
+| model | cite gap, correct option | cite gap, wrong option | gold-evidence gap, correct | gold-evidence gap, wrong | masked % | re-cite |
+|---|---|---|---|---|---|---|
+| chain GRPO (CLEVRER only) | 0.054 [0.035,0.074] | 0.051 [0.032,0.070] | 0.077 [0.051,0.104] | 0.073 [0.050,0.096] | 1.9 | 0.44 / 0.75 |
+| mix chain SFT | 0.088 [0.061,0.116] | 0.106 [0.078,0.134] | 0.087 [0.061,0.115] | 0.108 [0.074,0.143] | 2.4 | 0.48 / 0.81 |
+| mix chain GRPO | 0.029 [0.016,0.044] | 0.074 [0.047,0.101] | 0.050 [0.033,0.067] | 0.100 [0.070,0.134] | 1.4 | 0.53 / 0.83 |
+| real chain GRPO | 0.021 [0.004,0.037] | 0.027 [0.009,0.045] | 0.078 [0.051,0.105] | 0.050 [0.023,0.077] | 0.4 | 0.45 / 0.77 |
+| InternVL3-2B chain GRPO | 0.055 [0.039,0.073] | 0.034 [0.018,0.052] | 0.084 [0.062,0.107] | 0.068 [0.048,0.087] | 0.5 | 0.58 / 0.83 |
+
+Reading: (a) the NExT-QA cite-gap null is not dilution by rejections (<= 0.012 on correct options) and not misplaced
+boxes (<= 0.011 where every box hits); (b) the entity-track gap is concentrated on correct options (0.10-0.11); (c) on
+CLEVRER the cite gap is symmetric over correct and wrong options; (d) chain-free models need the gold evidence as much
+as chain models (gold-evidence gap: zero-shot base 0.063, outcome-only GRPO 0.097-0.119, plain mixed arms
+0.067-0.071), so a positive cite gap shows the chain cites pixels the model needs, not that the chain makes them
+needed; (e) under the cited-box mask the real-video models re-cite the same box in 14-17% of steps vs 52-55% under
+the random mask: the citation follows the pixels, the answer does not. Box IoU over seeds (rescored 2026-11-09):
+chain GRPO 0.654 / 0.665 / 0.660, CSR 0.668 / 0.666, CSR without necessity 0.637, step-level credit 0.3: 0.658.
 
 ## Manual audit of the pseudo-labelled chains
 
