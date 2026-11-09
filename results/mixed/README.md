@@ -112,10 +112,10 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    answer-relevant where evidence is local and unique. The entity-track test (table below) asks whether NExT-QA
    evidence is just spatially redundant: every entity a chain names is re-detected on all 16 frames and every
    detection plus the cited boxes is blacked out, against same-size boxes elsewhere on the same frames. For the mixed
-   chain SFT the gap rises from 0.003 (one box on a few frames) to 0.048 [0.04,0.06] (the entity gone from every
-   frame), against a blind gap of 0.223 and a CLEVRER object-track gap of 0.49 for the same model. Redundancy is real
-   but small: with everything the chain names removed everywhere, 89% of correct answers stand (94% under the
-   control). The remainder points at the supervision: pseudo-labelled chains (teacher steps plus detector boxes)
+   chain SFT and the real chain GRPO models the gap rises from 0.001-0.003 (one box on a few frames) to 0.046-0.048
+   [0.04,0.06] (the entity gone from every frame), against blind gaps of 0.154-0.223 and CLEVRER object-track gaps
+   of 0.44-0.49 for the same models. Redundancy is real but small: with everything the chain names removed
+   everywhere, nine in ten correct answers stand (94-95% under the control). The remainder points at the supervision: pseudo-labelled chains (teacher steps plus detector boxes)
    taught the model to cite objects that are not the decisive evidence.
 9. **The real-video citations are not garbage: they land on the named object.** Re-detecting the entity each step
    names ("Where is the white dog?") with Grounding DINO on the cited frame (table below) finds it 87-93% of the
@@ -159,11 +159,11 @@ alone: 3.9%); the control places the same boxes at random positions that avoid t
 | model | n | flip (tracks) | flip (random) | entity-track gap [95% CI] | causal | temporal | descriptive | cite gap | blind gap |
 |---|---|---|---|---|---|---|---|---|---|
 | mix chain SFT | 4087 | 0.110 | 0.062 | 0.048 [0.04,0.06] | 0.046 | 0.036 | 0.061 | 0.003 | 0.223 |
-| real chain GRPO | pending | | | | | | | 0.001 | 0.154 |
+| real chain GRPO | 4140 | 0.095 | 0.049 | 0.046 [0.04,0.06] | 0.043 | 0.031 | 0.065 | 0.001 | 0.154 |
 
-Split by detector coverage (mix chain SFT): items whose entities were detected on >=14 frames on average (n=3,088)
-have a gap of 0.053 (0.119 vs 0.066); the rest (n=999) 0.032 (0.079 vs 0.047). Missed detections do not hide a
-larger effect.
+Split by detector coverage: items whose entities were detected on >=14 frames on average have gaps of 0.053 (mix
+chain SFT, n=3,088) and 0.050 (real chain GRPO, n=3,287); the rest (n=999 / 853) 0.032 and 0.033. Missed detections
+do not hide a larger effect.
 
 CLEVRER (2,537 items):
 
