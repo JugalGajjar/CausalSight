@@ -6,6 +6,10 @@
   cs-clevrer-validate explanatory --n-videos 500
       explanatory choices are fully computable from observed events; agreement with choice labels.
 
+  cs-clevrer-validate full --split train        (and --split validation)
+      every descriptive answer and every explanatory choice label of the split against the executor;
+      prints the number compared and the number of mismatches (0 / 170,762 on train, 0 / 85,687 on validation).
+
 Both should be near 100%. Anything else means the scene model or a module is wrong.
 """
 
@@ -94,16 +98,44 @@ def run_explanatory(root: Path, split: str, videos: list[dict]) -> None:
         print(" ", e)
 
 
+def run_full(root: Path, split: str, videos: list[dict]) -> dict:
+    """Executor vs ground truth on every descriptive question and explanatory choice (the two types the executor
+    can decide from observed events; predictive and counterfactual outcomes need the simulator)."""
+    from causalsight.data.clevrer_executor import UNKNOWN
+
+    compared: Counter = Counter()
+    wrong: Counter = Counter()
+    for v in videos:
+        scene = Scene.from_annotation(find_annotation(root, split, v["scene_index"]))
+        for q in v["questions"]:
+            t = q["question_type"]
+            if t == "descriptive":
+                out = TracedExecutor(scene).run(q["program"])
+                compared[t] += 1
+                wrong[t] += out.kind == "error" or TracedExecutor.answer_str(out) != str(q["answer"])
+            elif t == "explanatory":
+                for c in q["choices"]:
+                    out = TracedExecutor(scene).run(c["program"] + q["program"])
+                    a = TracedExecutor.answer_str(out)
+                    compared[t] += 1
+                    wrong[t] += out.kind == "error" or a == UNKNOWN or a != ("yes" if c["answer"] == "correct" else "no")
+    res = {"split": split, "videos": len(videos), "compared": dict(compared), "total": sum(compared.values()), "mismatches": dict(wrong)}
+    print(json.dumps(res, indent=2))
+    return res
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("mode", choices=["descriptive", "explanatory"])
+    ap.add_argument("mode", choices=["descriptive", "explanatory", "full"])
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="train")
-    ap.add_argument("--n-videos", type=int, default=300)
+    ap.add_argument("--n-videos", type=int, default=300, help="first N videos of the split (full mode: all)")
     ap.add_argument("--thresholds", default="0.02,0.05,0.1,0.15,0.2,0.3,0.5")
     args = ap.parse_args()
-    videos = load_questions(args.root, args.split, args.n_videos)
-    if args.mode == "descriptive":
+    videos = load_questions(args.root, args.split, None if args.mode == "full" else args.n_videos)
+    if args.mode == "full":
+        run_full(args.root, args.split, videos)
+    elif args.mode == "descriptive":
         run_descriptive(args.root, args.split, videos, [float(x) for x in args.thresholds.split(",")])
     else:
         run_explanatory(args.root, args.split, videos)
