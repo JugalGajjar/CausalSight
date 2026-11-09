@@ -128,6 +128,26 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    identical box for every step, and in the blind condition 92-99% do, so a repeated box is the model's default
    when it has nothing to look at.
 
+## Manual audit of the pseudo-labelled chains
+
+100 chains sampled uniformly from `mix/real_chains_sft.jsonl` (one per question, seed 0; 299 steps), judged on the
+cited frame with the detector box drawn (`cs-pseudolabel-audit`; judgements in `pseudolabel_audit.csv`, rates in
+`pseudolabel_audit_summary.json`).
+
+| judgement | n | yes | no | unsure |
+|---|---|---|---|---|
+| step: named entity visible on the cited frame | 299 | 0.823 | 0.094 | 0.084 |
+| step: box is on the named entity | 299 | 0.699 | 0.184 | 0.117 |
+| step: relevant to the question | 299 | 0.953 | 0.037 | 0.010 |
+| chain: steps suffice to answer | 100 | 0.89 | 0.08 | 0.03 |
+| chain: a step beyond locating an entity | 100 | 0.08 | 0.92 | 0.00 |
+
+The box is on the entity in 84% of the steps where the entity is visible (206/246); 51 chains have every step
+grounded, 14 have none. Failure modes: box on the wrong one of two people, entity not on the cited frame, stock
+phrases for entities not in the video ("the man in the blue sweater"), predicates as entities ("walking on the
+path"), whole-frame boxes. The steps are relevant and would suffice if believed, but 92 of 100 chains contain only
+"where is X" observations that restate the answer the teacher was shown.
+
 ## Self-cited evidence masking (per-option items)
 
 For every item the regions cited in the model's own unmasked chain (`E: t=a-b box=...`, mapped from the 0-127 chain
