@@ -55,11 +55,12 @@ def frame_with_box(frames_root: Path, frames_key: str, frame: int, box, width: i
     return base64.b64encode(buf.getvalue()).decode()
 
 
-def radio(name: str) -> str:
-    return "".join(f'<label><input type="radio" name="{name}" value="{v}"> {v}</label> ' for v in ("yes", "no", "unsure"))
+def radio(name: str, prefill: dict[str, str] | None = None) -> str:
+    pre = (prefill or {}).get(name)
+    return "".join(f'<label><input type="radio" name="{name}" value="{v}"{" checked" if v == pre else ""}> {v}</label> ' for v in ("yes", "no", "unsure"))
 
 
-def render(chains: list[dict], frames_root: Path) -> str:
+def render(chains: list[dict], frames_root: Path, prefill: dict[str, str] | None = None) -> str:
     parts = [
         "<!doctype html><meta charset='utf-8'><title>Pseudo-label audit</title>",
         "<style>body{font:14px system-ui;margin:20px;max-width:1100px}.chain{border:1px solid #ccc;padding:10px;margin:14px 0}"
@@ -70,6 +71,8 @@ def render(chains: list[dict], frames_root: Path) -> str:
         "Boxes are the detector's; entities and observations are the teacher's.</p>",
         "<button onclick='dl()'>Download CSV</button>",
     ]
+    if prefill:
+        parts.append("<p><b>Pre-filled</b> from an earlier pass: every radio is already set; change the ones you disagree with, then download.</p>")
     for ci, r in enumerate(chains):
         ch = r["chain"]
         frames_key = r["frames"].rstrip("/").rsplit("/", 1)[-1]  # "/content/data/nextqa_pack/frames/<video>" or "frames/<video>"
@@ -84,15 +87,16 @@ def render(chains: list[dict], frames_root: Path) -> str:
             parts.append(f"<div class='step'><img src='data:image/jpeg;base64,{b64}'><div>"
                          f"<div><b>step {si + 1}</b>, span {int(e['t_start'])}-{int(e['t_end'])} of 128, sampled frame {fr}</div><div>{html.escape(t['question'])}</div><div><i>{html.escape(t['answer'])}</i></div>")
             for key, label in STEP_Q:
-                parts.append(f"<div>{label}: {radio(f'c{ci}_s{si}_{key}')}</div>")
+                parts.append(f"<div>{label}: {radio(f'c{ci}_s{si}_{key}', prefill)}</div>")
             parts.append("</div></div>")
         for key, label in CHAIN_Q:
-            parts.append(f"<div>{label}: {radio(f'c{ci}_{key}')}</div>")
-        parts.append(f"<textarea name='c{ci}_note' rows='1' placeholder='notes'></textarea></div>")
+            parts.append(f"<div>{label}: {radio(f'c{ci}_{key}', prefill)}</div>")
+        note = (prefill or {}).get(f'c{ci}_note', '')
+        parts.append(f"<textarea name='c{ci}_note' rows='1' placeholder='notes'>{html.escape(note)}</textarea></div>")
     parts.append("""<script>
 function dl(){const rows=[["name","value"]];document.querySelectorAll("input[type=radio]:checked").forEach(i=>rows.push([i.name,i.value]));
 document.querySelectorAll("textarea").forEach(t=>{if(t.value)rows.push([t.name,JSON.stringify(t.value)])});
-const csv=rows.map(r=>r.join(",")).join("\\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="pseudolabel_audit.csv";a.click();}
+const csv=rows.map(r=>r.map(v=>/[",\\n]/.test(v)&&!v.startsWith('"')?JSON.stringify(v):v).join(",")).join("\\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="pseudolabel_audit.csv";a.click();}
 </script>""")
     return "\n".join(parts)
 
@@ -119,13 +123,18 @@ def main() -> None:
     b.add_argument("--out", type=Path, required=True)
     b.add_argument("--n", type=int, default=100)
     b.add_argument("--seed", type=int, default=0)
+    b.add_argument("--prefill", type=Path, default=None, help="CSV from an earlier pass (name,value): pre-check the radios so a verifier only flips disagreements")
     s = sub.add_parser("summarize")
     s.add_argument("csv", type=Path)
     a = ap.parse_args()
     if a.cmd == "build":
         chains = sample_chains(a.sft, a.n, a.seed)
         a.out.parent.mkdir(parents=True, exist_ok=True)
-        a.out.write_text(render(chains, a.frames / "frames"))
+        prefill = None
+        if a.prefill:
+            with a.prefill.open() as f:
+                prefill = {r["name"]: (json.loads(r["value"]) if r["name"].endswith("_note") else r["value"]) for r in csv.DictReader(f)}
+        a.out.write_text(render(chains, a.frames / "frames", prefill))
         print(f"{len(chains)} chains, {sum(len(c['chain']['triplets']) for c in chains)} steps -> {a.out} ({a.out.stat().st_size / 1e6:.1f} MB)")
     elif a.cmd == "summarize":
         print(json.dumps(summarize(a.csv), indent=2))
