@@ -304,6 +304,12 @@ the pseudo-label audit. Judgements in `model_citation_audit.csv`, rates in `mode
   so the column records whether the steps match the option, not whether they support the model's verdict (model says
   no: 42 no, 22 unsure, 5 yes; model says yes: 23 yes, 8 unsure, 0 no). It is kept in the CSV but left out of the
   paper and of `tab_model_audit.tex`.
+- **Asked again on its own sheet** (`build-model --verdict-only`, `model_verdict_audit.csv`, summary in
+  `model_verdict_audit_summary.json`): the verdict is stated next to each chain ("NO, this option is wrong") and the
+  question is whether the steps, taken as true, support it. Yes 63, no 3, unsure 34 of 100 (mixed chain SFT 31/2/17,
+  NExT-QA chain GRPO 32/1/17). By verdict: model says no 38/3/28 of 69, model says yes 25/0/6 of 31. By correctness:
+  right verdicts 50/3/26 of 79, wrong verdicts 13/0/8 of 21, so support does not separate right from wrong answers.
+  The two models agree on 37 of the 50 questions (25 yes-yes, 12 unsure-unsure).
 
 ## Self-cited evidence masking (per-option items)
 
