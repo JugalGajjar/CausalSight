@@ -237,6 +237,14 @@ numbers are in `<tag>_splits.json` and the two `*_pooled.json` files.
 * **Dose-response.** The NExT-QA cite gap does not rise with the share of the entity's frames that the citations
   cover, except for the mixed chain SFT (0.023 [0.010,0.037] at >=30% coverage). The entity-track gap is present for
   entities detected on 9 or more frames.
+* **Entity-level control for the entity-track test** (replay of the seeded control; `entity_control` in the splits
+  files). Items are grouped by the share of control boxes that cover >=30% of another detected entity of the same
+  video (a phrase this item's chain does not name, not overlapping its own entity boxes, <40% of the frame). Where
+  that share is >=0.5 (about 18% of items) the gap is 0.037 [0.011,0.064] for mix chain SFT and 0.044 [0.024,0.067]
+  for NExT-QA chain GRPO (0.070 and 0.111 on correct options), against 0.049 and 0.048 where the control is on
+  background. So the entity-track gap is not entity-vs-background: named entities matter more than other entities.
+* **Citation stability, prediction preserved.** Under the random mask the answer is unchanged for 96-98% of NExT-QA
+  items, and on those the same box is re-cited in 52-55% of steps (76-84% on CLEVRER).
 * **Strict question-text split.** On items none of whose named entities shares a content word with the question or
   options (35-38% of items) the entity-track gap is 0.046 and 0.049 (0.115 and 0.120 on correct options).
 * **References.** Every bibliography entry was checked against arXiv or Crossref on 2026-11-10; seven entries had

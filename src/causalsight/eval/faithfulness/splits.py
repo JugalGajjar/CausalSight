@@ -27,6 +27,11 @@ writes <tag>_splits.json with
              entity is rarer or the citation covers more of it.
   clevrer    (with --proposals) cite gap by whether every cited box is on the object it names, and by whether
              the random control lands on an object or only on background.
+  entity_control  (with --tracks) the entity-track control is replayed and each item is scored by the share of its
+             control boxes that cover at least 30% of ANOTHER detected entity of the same video (a phrase the item's
+             own chain does not name, not overlapping its own entity boxes, smaller than 40% of the frame). The
+             entity-track gap is then given where the control mostly lands on other entities and where it lands on
+             background: the first is the stricter comparison, entity against entity.
   recite     what the chain written under the mask cites: the blacked-out box again, another place on a
              masked frame, or a frame the mask did not touch; and the same for the random-mask run, where
              "the box cited before" is still visible (a baseline for how stable citations are).
@@ -164,6 +169,45 @@ def control_coverage(plain_path: Path, control_rows: dict, seed: int = 0) -> dic
             shares.append(best)
         if shares:
             out[i] = sum(shares) / len(shares)
+    return out
+
+
+def entity_control_share(tracks_path: Path, plain_path: Path, control_rows: dict, seed: int = 0, cover: float = 0.3, max_area: float = 0.4) -> dict[str, float]:
+    """Replays the seeded entity-track control (items in output order) and returns, per item, the share of its
+    control boxes that cover at least `cover` of another detected entity on the same frame."""
+    from causalsight.eval.entity_tracks import EntityTrackIndex, avoiding_random_regions, frames_hit
+
+    idx = EntityTrackIndex.load(tracks_path, plain_path)
+    rng = random.Random(seed)
+    out: dict[str, float] = {}
+    for i in control_rows:  # file order, as the harness drew them
+        regs = idx.get(i)
+        if not regs:
+            continue
+        ctrl = avoiding_random_regions(regs, CHAIN_SCALE, N_FRAMES, rng)
+        video = idx.videos.get(i)
+        own = set(idx.entities.get(i, []))
+        own_by_frame: dict[int, list] = defaultdict(list)
+        for reg in regs:
+            for f in frames_hit(reg, CHAIN_SCALE, N_FRAMES):
+                own_by_frame[f].append(tuple(reg[2]))
+        hits = total = 0
+        for t0, t1, cb in ctrl:
+            for f in frames_hit((t0, t1, cb), CHAIN_SCALE, N_FRAMES):
+                total += 1
+                for phrase, dets in idx.tracks.get(video, {}).items():
+                    if phrase in own or str(f) not in dets:
+                        continue
+                    ob = tuple(dets[str(f)])
+                    if (ob[2] - ob[0]) * (ob[3] - ob[1]) >= max_area:
+                        continue  # floor, room, background phrases
+                    if any(_iou(ob, o) >= 0.3 for o in own_by_frame[f]):
+                        continue  # the same entity under another name
+                    if _overlap_share(ob, tuple(cb)) >= cover:
+                        hits += 1
+                        break
+        if total:
+            out[i] = hits / total
     return out
 
 
@@ -387,6 +431,15 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
             b_ids = [i for i, v in cover.items() if lo <= v < hi]
             dose["by_cover"][label] = {"n": len(b_ids), "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng) if "mask_cite" in runs else None}
         out["dose"] = dose
+        if "mask_cite_track" in runs and "mask_cite_track_random" in runs:
+            share = entity_control_share(Path(tracks_path), dir_ / f"{tag}_plain.jsonl", runs["mask_cite_track_random"])
+            vals = sorted(share.values())
+            ec: dict = {"n": len(vals), "mean_share": sum(vals) / len(vals) if vals else None, "median_share": vals[len(vals) // 2] if vals else None}
+            for label, keep in (("on_other_entity", lambda v: v >= 0.5), ("mixed", lambda v: 0.1 < v < 0.5), ("on_background", lambda v: v <= 0.1)):
+                sids = [i for i, v in share.items() if keep(v)]
+                ec[label] = {"n": len(sids), "entity_track": gap_stats(runs, "mask_cite_track", "mask_cite_track_random", sids, cluster, rng),
+                             "entity_track_yes": gap_stats(runs, "mask_cite_track", "mask_cite_track_random", [i for i in sids if str(plain[i].get("gold")) == "yes"], cluster, rng)}
+            out["entity_control"] = ec
         status = {i: hit_status(plain[i].get("raw", ""), tracks.get(plain[i].get("frames_key") or i.split("_")[0], {})) for i in ids}
         by_hit: dict = {}
         for s in ("all", "not_all"):

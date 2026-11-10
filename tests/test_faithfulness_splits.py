@@ -69,3 +69,20 @@ def test_pooled_keeps_questions_as_clusters(tmp_path):
             (tmp_path / f"{tag}_{name}.jsonl").write_text("\n".join(json.dumps(r) for r in mk(fn)) + "\n")
     r = pooled(tmp_path, ["a", "b"])
     assert r["cite"]["all"]["n_correct"] == 8 and abs(r["cite"]["all"]["gap"] - 3 / 8) < 1e-9 and r["cite"]["yes"]["n_correct"] == 8
+
+
+def test_entity_control_share_counts_other_entities_only(tmp_path):
+    from causalsight.eval.faithfulness.splits import entity_control_share
+
+    raw = CH("0.050,0.050,0.250,0.250")  # names "the dog", small box in the top-left corner
+    rows = [{"id": f"v1_{i}_0", "frames_key": "v1", "raw": raw, "correct": 1} for i in range(40)]
+    write(tmp_path, "plain", rows)
+    dog = {str(f): [0.05, 0.05, 0.25, 0.25] for f in range(16)}
+    cat = {str(f): [0.60, 0.60, 0.80, 0.80] for f in range(16)}       # another entity, elsewhere
+    floor = {str(f): [0.0, 0.3, 1.0, 1.0] for f in range(16)}         # too large to count as an entity
+    alias = {str(f): [0.06, 0.05, 0.26, 0.25] for f in range(16)}     # the same entity under another name
+    (tmp_path / "tracks.json").write_text(json.dumps({"v1": {"the dog": dog, "the cat": cat, "the floor": floor, "the puppy": alias}}))
+    share = entity_control_share(tmp_path / "tracks.json", tmp_path / "m_plain.jsonl", {r["id"]: r for r in rows})
+    assert len(share) == 40 and all(0.0 <= v <= 1.0 for v in share.values())
+    assert 0.0 < sum(share.values()) / len(share) < 0.5   # only boxes that land on the cat count
+    assert share == entity_control_share(tmp_path / "tracks.json", tmp_path / "m_plain.jsonl", {r["id"]: r for r in rows})
