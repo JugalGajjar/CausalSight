@@ -42,6 +42,71 @@
   "mask_cite": 0.03942763962494906,
   "mask_cite_random": 0.0394276600081533
  },
+ "by_blind": {
+  "n_video_dependent": 906,
+  "n_not": 3222,
+  "cite": {
+   "video_dependent": {
+    "n_correct": 887,
+    "flip": 0.036076662908680945,
+    "flip_ci": [
+     0.02372479240806643,
+     0.04932735426008968
+    ],
+    "flip_control": 0.03269447576099211,
+    "gap": 0.003382187147688835,
+    "gap_ci": [
+     -0.006872852233676979,
+     0.014590347923681253
+    ]
+   },
+   "not": {
+    "n_correct": 3174,
+    "flip": 0.007561436672967864,
+    "flip_ci": [
+     0.004730368968779565,
+     0.010698552548772814
+    ],
+    "flip_control": 0.011027095148078135,
+    "gap": -0.0034656584751102714,
+    "gap_ci": [
+     -0.006603773584905661,
+     -0.00031857279388340307
+    ]
+   },
+   "video_dependent_yes": {
+    "n_correct": 279,
+    "flip": 0.03225806451612903,
+    "flip_ci": [
+     0.014336917562724014,
+     0.05734767025089606
+    ],
+    "flip_control": 0.010752688172043012,
+    "gap": 0.02150537634408602,
+    "gap_ci": [
+     0.007168458781362005,
+     0.03942652329749104
+    ]
+   }
+  }
+ },
+ "symmetric": {
+  "cite": {
+   "n": 4906,
+   "n_wrong": 845,
+   "wrong_to_right": 0.05207100591715976,
+   "wrong_to_right_control": 0.04378698224852071,
+   "net": -0.0024459845087647647,
+   "net_control": -0.005503465144720776
+  }
+ },
+ "selection": {
+  "cite": {
+   "n_questions": 433,
+   "flip": 0.03926096997690531,
+   "flip_control": 0.04157043879907621
+  }
+ },
  "frames": null,
  "recite": {
   "cite": {
@@ -61,6 +126,44 @@
    "other_frame": 0.0,
    "same_entities": null,
    "items_without_citation_under_mask": 0
+  }
+ },
+ "dose": {
+  "by_frames": {
+   "1-8": {
+    "n": 0,
+    "cite": null,
+    "entity_track": null
+   },
+   "9-13": {
+    "n": 0,
+    "cite": null,
+    "entity_track": null
+   },
+   "14-15": {
+    "n": 0,
+    "cite": null,
+    "entity_track": null
+   },
+   "16": {
+    "n": 0,
+    "cite": null,
+    "entity_track": null
+   }
+  },
+  "by_cover": {
+   "<0.15": {
+    "n": 0,
+    "cite": null
+   },
+   "0.15-0.3": {
+    "n": 0,
+    "cite": null
+   },
+   ">=0.3": {
+    "n": 0,
+    "cite": null
+   }
   }
  },
  "by_hit": {

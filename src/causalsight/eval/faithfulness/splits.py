@@ -16,6 +16,17 @@ writes <tag>_splits.json with
              stored, but they are a seeded draw in output order, so they are replayed exactly; the cite gap
              is then recomputed on the items whose control does not touch the cited boxes.
   frames     mean number of sampled frames a cited region is applied to.
+  by_blind   every gap on the video-dependent items (correct under the plain input, wrong with all frames
+             black) and on the rest; the flip rate there divided by 1 is the share of the video dependence
+             that the intervention removes.
+  symmetric  wrong-to-correct flips and the net change in accuracy under each mask and its control.
+  selection  (per-option benchmarks) question-level flips: questions whose selected option is right under the
+             plain input and no longer right under the mask or its control.
+  dose       (with --tracks) cite gap by how many of the 16 frames show the named entities and by the share
+             of those frames the citations cover: the redundancy account predicts a larger gap where the
+             entity is rarer or the citation covers more of it.
+  clevrer    (with --proposals) cite gap by whether every cited box is on the object it names, and by whether
+             the random control lands on an object or only on background.
   recite     what the chain written under the mask cites: the blacked-out box again, another place on a
              masked frame, or a frame the mask did not touch; and the same for the random-mask run, where
              "the box cited before" is still visible (a baseline for how stable citations are).
@@ -107,12 +118,15 @@ def _tokens(text: str) -> list[str]:
     return [w for w in "".join(ch.lower() if ch.isalnum() else " " for ch in text).split() if w not in STOP]
 
 
-def entities_in_text(raw: str, prompt: str) -> bool | None:
-    """True if every entity the chain names has all its content words in the question/option text."""
+def entities_in_text(raw: str, prompt: str, mode: str = "all") -> bool | None:
+    """mode 'all': True if every entity the chain names has all its content words in the question/option text.
+    mode 'none': True if no named entity shares a content word with that text."""
     ents = {e for e, *_ in cited_steps(raw) if e}
     if not ents:
         return None
     words = set(_tokens(prompt.split("Is this option correct?")[0]))
+    if mode == "none":
+        return not any(set(_tokens(e)) & words for e in ents)
     return all(set(_tokens(e)) <= words for e in ents)
 
 
@@ -124,16 +138,22 @@ def _overlap_share(box: tuple, other: tuple) -> float:
     return max(0.0, w) * max(0.0, h) / area if area > 0 else 0.0
 
 
-def control_coverage(plain_path: Path, control_rows: dict, seed: int = 0) -> dict[str, float]:
+def replay_controls(plain_path: Path, control_rows: dict, seed: int = 0) -> dict[str, tuple[list, list]]:
     """Replays the seeded random control of a cite_random run (items in output order, as the harness drew
-    them) and returns, per item, the mean share of each cited box that a control box blacks out on the
-    frames where both apply."""
+    them): item id -> (cited regions, control regions)."""
     ev = EvidenceIndex.from_outputs(plain_path)
     rng = random.Random(seed)
-    out: dict[str, float] = {}
+    out = {}
     for i in control_rows:  # file order
         regs = ev.get_cited(i)
-        ctrl = random_regions(regs, rng)
+        out[i] = (regs, random_regions(regs, rng))
+    return out
+
+
+def control_coverage(plain_path: Path, control_rows: dict, seed: int = 0) -> dict[str, float]:
+    """Per item, the mean share of each cited box that a control box blacks out on the frames where both apply."""
+    out: dict[str, float] = {}
+    for i, (regs, ctrl) in replay_controls(plain_path, control_rows, seed).items():
         shares = []
         for t0, t1, b in regs:
             fs = frames_of_span(t0, t1)
@@ -154,10 +174,14 @@ def pooled(dir_: Path, tags: list[str]) -> dict:
     for name, (a, b) in PAIRS.items():
         runs: dict = {"plain": {}, a: {}, b: {}}
         cluster: dict[str, str] = {}
+        blind: dict = {}
         for t in tags:
             if not all((dir_ / f"{t}_{k}.jsonl").exists() for k in ("plain", a, b)):
                 continue
             pl = load(dir_ / f"{t}_plain.jsonl")
+            if (dir_ / f"{t}_blind.jsonl").exists():
+                for i, r in load(dir_ / f"{t}_blind.jsonl").items():
+                    blind[f"{t}|{i}"] = r
             for k in (a, b):
                 for i, r in load(dir_ / f"{t}_{k}.jsonl").items():
                     runs[k][f"{t}|{i}"] = r
@@ -170,6 +194,11 @@ def pooled(dir_: Path, tags: list[str]) -> dict:
         row = {"all": gap_stats(runs, a, b, ids, cluster, rng)}
         for g in ("yes", "no"):
             row[g] = gap_stats(runs, a, b, [i for i in ids if str(runs["plain"][i].get("gold")) == g], cluster, rng)
+        vd = [i for i in ids if blind.get(i) is not None and runs["plain"][i]["correct"] and not blind[i]["correct"]]
+        row["video_dependent"] = gap_stats(runs, a, b, vd, cluster, rng)
+        row["video_dependent_yes"] = gap_stats(runs, a, b, [i for i in vd if str(runs["plain"][i].get("gold")) == "yes"], cluster, rng)
+        cp = [i for i in ids if runs["plain"][i]["correct"] and i in runs[a] and i in runs[b] and blind.get(i) is not None]
+        row["blind_flip"] = sum(1 for i in cp if not blind[i]["correct"]) / len(cp) if cp else None
         out[name] = row
     return out
 
@@ -216,7 +245,7 @@ def recite(plain: dict, masked: dict, ids: list[str], thr: float = 0.5) -> dict:
     }
 
 
-def splits(dir_: Path, tag: str, tracks_path: Path | None = None) -> dict:
+def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Path | None = None) -> dict:
     names = ["plain", "blind"] + [k for pair in PAIRS.values() for k in pair]
     runs = {k: load(dir_ / f"{tag}_{k}.jsonl") for k in names if (dir_ / f"{tag}_{k}.jsonl").exists()}
     if "plain" not in runs:
@@ -248,6 +277,46 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None) -> dict:
         if mf:
             out["area"][k] = sum(mf) / len(mf)
 
+    if "blind" in runs:
+        bl = runs["blind"]
+        vd = [i for i in ids if i in bl and plain[i]["correct"] and not bl[i]["correct"]]
+        nvd = [i for i in ids if i in bl and plain[i]["correct"] and bl[i]["correct"]]
+        by_blind: dict = {"n_video_dependent": len(vd), "n_not": len(nvd)}
+        for name, (a, b) in PAIRS.items():
+            if a in runs and b in runs:
+                by_blind[name] = {"video_dependent": gap_stats(runs, a, b, vd, cluster, rng), "not": gap_stats(runs, a, b, nvd, cluster, rng),
+                                  "video_dependent_yes": gap_stats(runs, a, b, [i for i in vd if str(plain[i].get("gold")) == "yes"], cluster, rng)}
+        out["by_blind"] = by_blind
+
+    sym: dict = {}
+    for name, (a, b) in PAIRS.items():
+        if a in runs and b in runs:
+            both = [i for i in ids if i in runs[a] and i in runs[b]]
+            wrong = [i for i in both if not plain[i]["correct"]]
+            acc = lambda k: sum(runs[k][i]["correct"] for i in both) / len(both)
+            sym[name] = {"n": len(both), "n_wrong": len(wrong),
+                         "wrong_to_right": sum(runs[a][i]["correct"] for i in wrong) / len(wrong) if wrong else None,
+                         "wrong_to_right_control": sum(runs[b][i]["correct"] for i in wrong) / len(wrong) if wrong else None,
+                         "net": acc(a) - sum(plain[i]["correct"] for i in both) / len(both), "net_control": acc(b) - sum(plain[i]["correct"] for i in both) / len(both)}
+    out["symmetric"] = sym
+
+    if all("qset" in r and "pred" in r for r in plain.values()):
+        qs: dict[str, list[str]] = defaultdict(list)
+        for i in ids:
+            qs[str(plain[i]["qset"])].append(i)
+
+        def credit(rows: dict, items: list[str]) -> float:
+            yes = [i for i in items if rows[i]["pred"] == "yes"]
+            return 1 / len(items) if not yes else (1 / len(yes) if any(str(plain[i]["gold"]) == "yes" for i in yes) else 0.0)
+
+        sel: dict = {}
+        for name, (a, b) in PAIRS.items():
+            if a in runs and b in runs:
+                full = [q for q, items in qs.items() if all(i in runs[a] and i in runs[b] for i in items) and credit(plain, items) == 1.0]
+                if full:
+                    sel[name] = {"n_questions": len(full), "flip": sum(credit(runs[a], qs[q]) < 1.0 for q in full) / len(full), "flip_control": sum(credit(runs[b], qs[q]) < 1.0 for q in full) / len(full)}
+        out["selection"] = sel
+
     spans = [len(frames_of_span(t0, t1)) for i in ids for _e, t0, t1, _b in cited_steps(plain[i].get("raw", ""))]
     out["frames"] = sum(spans) / len(spans) if spans else None
 
@@ -272,6 +341,14 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None) -> dict:
                     row[name] = gap_stats(runs, a, b, tids, cluster, rng)
                     row[name + "_yes"] = gap_stats(runs, a, b, [i for i in tids if str(plain[i].get("gold")) == "yes"], cluster, rng)
             by_text[key] = row
+        tids = [i for i in ids if entities_in_text(plain[i].get("raw", ""), plain[i].get("prompt", ""), "none") is True]
+        row = {"n": len(tids)}
+        for name in ("cite", "entity_track"):
+            a, b = PAIRS[name]
+            if a in runs and b in runs:
+                row[name] = gap_stats(runs, a, b, tids, cluster, rng)
+                row[name + "_yes"] = gap_stats(runs, a, b, [i for i in tids if str(plain[i].get("gold")) == "yes"], cluster, rng)
+        by_text["no_overlap"] = row
         out["by_text"] = by_text
 
     if "mask_cite" in runs:
@@ -283,6 +360,28 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None) -> dict:
     if tracks_path and Path(tracks_path).exists():
         tracks = json.loads(Path(tracks_path).read_text())
         tracks.pop("_summary", None)
+        dose: dict = {"by_frames": {}, "by_cover": {}}
+        nfr: dict[str, float] = {}
+        cover: dict[str, float] = {}
+        for i in ids:
+            vt = tracks.get(plain[i].get("frames_key") or i.split("_")[0], {})
+            steps = [st for st in cited_steps(plain[i].get("raw", "")) if st[0]]
+            dets = [set(int(f) for f in vt.get(e, {})) for e in {st[0] for st in steps}]
+            dets = [d for d in dets if d]
+            if not dets:
+                continue
+            allf = set().union(*dets)
+            cited_f = set().union(*(frames_of_span(t0, t1) for _e, t0, t1, _b in steps))
+            nfr[i] = sum(len(d) for d in dets) / len(dets)
+            cover[i] = len(cited_f & allf) / len(allf)
+        for label, lo, hi in (("1-8", 0, 8.5), ("9-13", 8.5, 13.5), ("14-15", 13.5, 15.5), ("16", 15.5, 99)):
+            b_ids = [i for i, v in nfr.items() if lo <= v < hi]
+            dose["by_frames"][label] = {"n": len(b_ids), "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng) if "mask_cite" in runs else None,
+                                        "entity_track": gap_stats(runs, "mask_cite_track", "mask_cite_track_random", b_ids, cluster, rng) if "mask_cite_track" in runs else None}
+        for label, lo, hi in (("<0.15", 0, 0.15), ("0.15-0.3", 0.15, 0.3), (">=0.3", 0.3, 9)):
+            b_ids = [i for i, v in cover.items() if lo <= v < hi]
+            dose["by_cover"][label] = {"n": len(b_ids), "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng) if "mask_cite" in runs else None}
+        out["dose"] = dose
         status = {i: hit_status(plain[i].get("raw", ""), tracks.get(plain[i].get("frames_key") or i.split("_")[0], {})) for i in ids}
         by_hit: dict = {}
         for s in ("all", "not_all"):
@@ -294,6 +393,40 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None) -> dict:
                     row[name] = gap_stats(runs, a, b, sids, cluster, rng)
             by_hit[s] = row
         out["by_hit"] = by_hit
+    if proposals and Path(proposals).exists() and "mask_cite" in runs and "mask_cite_random" in runs:
+        from causalsight.data.clevrer_evidence import ProposalIndex
+        from causalsight.eval.object_grounding import step_scores
+
+        idx_cache: dict[int, object] = {}
+
+        def pidx(i: str):
+            scene = int(i.split("_")[0])
+            if scene not in idx_cache:
+                if len(idx_cache) > 64:
+                    idx_cache.clear()
+                idx_cache[scene] = ProposalIndex.load(Path(proposals) / f"proposal_{scene:05d}.json")
+            return idx_cache[scene]
+
+        grid = sampled_frame_indices(CHAIN_SCALE, N_FRAMES)
+        good, bad, on_obj, on_bg = [], [], [], []
+        ctrl_of = replay_controls(dir_ / f"{tag}_plain.jsonl", runs["mask_cite_random"])
+        for i in sorted(ids, key=lambda x: int(x.split("_")[0])):
+            if i not in runs["mask_cite"] or i not in runs["mask_cite_random"]:
+                continue
+            ch = parse_chain(plain[i].get("raw", "")).chain
+            sc = step_scores(ch, pidx(i)) if ch else []
+            if sc:
+                (good if all(x["iou"] >= 0.5 for x in sc) else bad).append(i)
+            hit = False
+            for t0, t1, cb in ctrl_of.get(i, ([], []))[1]:
+                for f in frames_of_span(t0, t1):
+                    for (ob, _score) in pidx(i)._frame(grid[f]).values():
+                        if _overlap_share(tuple(ob), tuple(cb)) >= 0.3:  # the control covers at least 30% of an object
+                            hit = True
+            (on_obj if hit else on_bg).append(i)
+        g = lambda sub_: gap_stats(runs, "mask_cite", "mask_cite_random", sub_, cluster, rng)
+        out["clevrer"] = {"hit_all": {"n": len(good), "cite": g(good)}, "hit_not_all": {"n": len(bad), "cite": g(bad)},
+                          "control_on_object": {"n": len(on_obj), "cite": g(on_obj)}, "control_on_background": {"n": len(on_bg), "cite": g(on_bg)}}
     return out
 
 
@@ -301,6 +434,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dir", type=Path)
     ap.add_argument("--tag", default=None)
+    ap.add_argument("--proposals", type=Path, default=None, help="CLEVRER derender proposals dir: adds the citation-correctness and control-strata splits")
     ap.add_argument("--pool", nargs="+", default=None, help="tags to pool (writes <name>_pooled.json)")
     ap.add_argument("--name", default="pooled")
     ap.add_argument("--tracks", type=Path, default=None, help="entity tracks json (cs-entity-tracks): adds the split by citation hit")
@@ -312,7 +446,7 @@ def main() -> None:
         return
     if not a.tag:
         raise SystemExit("--tag or --pool is required")
-    res = splits(a.dir, a.tag, a.tracks)
+    res = splits(a.dir, a.tag, a.tracks, a.proposals)
     (a.dir / f"{a.tag}_splits.json").write_text(json.dumps(res, indent=1))
     print(json.dumps(res, indent=1))
 

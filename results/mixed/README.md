@@ -217,6 +217,34 @@ not appear in the question or option text (0.045, 0.053) as on those where they 
 the splits files. Training data note: `real_chains_sft.jsonl` has 8,000 items (4,000 yes, 4,000 no) from 5,283
 questions; where both items of a question are present (2,717 questions) their steps are identical.
 
+## Further checks on the two tests (added 2026-11-10)
+
+All from saved per-item outputs with `cs-faithfulness-splits` (`--tracks` for NExT-QA, `--proposals` for CLEVRER);
+numbers are in `<tag>_splits.json` and the two `*_pooled.json` files.
+
+* **Video-dependent answers** (correct with the video, wrong with every frame black). Blind flip rate of correct
+  answers: 29% on NExT-QA, 48% on CLEVRER. Among those answers the cited boxes flip 4.5% vs 3.9% for the control on
+  NExT-QA (gap 0.006 [0.001,0.011]) and 12.4% vs 5.7% on CLEVRER (0.067); the entity track flips 22.5% vs 12.9%
+  (0.096). As a share of the blind flip rate the pooled gaps are: cited boxes 1% (NExT-QA) and 11% (CLEVRER), entity
+  track 17%, CLEVRER object track about 100%.
+* **Object-level control on CLEVRER.** The control draws are replayed and split by whether the control box covers
+  at least 30% of an annotated object. Against that stricter control the cite gap stays positive for the four models
+  trained with CLEVRER chains (0.034-0.083, CIs above zero) and vanishes for the NExT-QA chain GRPO model (0.007
+  [-0.017,0.033]; box hit rate 0.15): its gap of 0.030 was objects vs background.
+* **Net accuracy and question-level flips.** NExT-QA: net per-option accuracy moves by at most 0.004 under the cited
+  mask; the selected answer changes for 6-10% of questions under the mask and 5-11% under the control. Entity track:
+  35-36% vs 19-22%. CLEVRER: net accuracy -0.04 to -0.07 under the cited mask vs -0.01 to -0.02 under the control.
+* **Dose-response.** The NExT-QA cite gap does not rise with the share of the entity's frames that the citations
+  cover, except for the mixed chain SFT (0.023 [0.010,0.037] at >=30% coverage). The entity-track gap is present for
+  entities detected on 9 or more frames.
+* **Strict question-text split.** On items none of whose named entities shares a content word with the question or
+  options (35-38% of items) the entity-track gap is 0.046 and 0.049 (0.115 and 0.120 on correct options).
+* **References.** Every bibliography entry was checked against arXiv or Crossref on 2026-11-10; seven entries had
+  wrong author first names and one a wrong title and author list, all corrected.
+
+Model names in the paper: CLEVRER chain SFT/GRPO, mixed chain SFT/GRPO, NExT-QA chain SFT/GRPO (the last were
+"real-chain" in earlier notes and in the result file tags `realsft3b`, `realrl3b`).
+
 ## Manual audit of the pseudo-labelled chains
 
 100 chains sampled uniformly from `mix/real_chains_sft.jsonl` (one per question, seed 0; 299 steps), judged on the
