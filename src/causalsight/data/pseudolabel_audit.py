@@ -35,6 +35,22 @@ from causalsight.eval.cite_grounding import frame_of
 STEP_Q = [("visible", "entity visible on this frame"), ("onbox", "box is on the named entity"), ("relevant", "step is relevant to the question")]
 CHAIN_Q = [("sufficient", "the steps together are enough to answer"), ("causal", "at least one step is more than a 'where is' observation")]
 MODEL_CHAIN_Q = CHAIN_Q + [("consistent", "the steps support the answer the model gave")]  # only on sheets of a model's own chains
+# The items are yes/no verdicts on one option. The first model sheet showed them as "Option D: spoon (gold no, model
+# says no)" and "consistent" was read as "the steps match the option", so the question is asked again on its own sheet
+# (`build-model --verdict-only`) with the verdict spelled out.
+VERDICT_Q = ("verdict", "taken as true, the steps support the model's verdict")
+
+
+SCRIPT = """<script>
+function dl(){const rows=[["name","value"]];document.querySelectorAll("input[type=radio]:checked").forEach(i=>rows.push([i.name,i.value]));
+document.querySelectorAll("textarea").forEach(t=>{if(t.value)rows.push([t.name,t.value])});
+const csv=rows.map(r=>r.map(v=>/[",\\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v).join(",")).join("\\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="__CSV_NAME__";a.click();}
+// autosave: every change is kept in this browser, so a reload or a closed tab does not lose progress
+const KEY="audit:__CSV_NAME__";
+function save(){try{const o={};document.querySelectorAll("input[type=radio]:checked").forEach(i=>o[i.name]=i.value);document.querySelectorAll("textarea").forEach(t=>o[t.name]=t.value);localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
+try{const o=JSON.parse(localStorage.getItem(KEY)||"null");if(o){for(const[k,v]of Object.entries(o)){if(k.endsWith("_note")){const t=document.querySelector('textarea[name="'+k+'"]');if(t)t.value=v;}else{const i=document.querySelector('input[name="'+k+'"][value="'+v+'"]');if(i)i.checked=true;}}}}catch(e){}
+document.addEventListener("change",save);document.addEventListener("input",save);
+</script>"""
 
 
 def sample_chains(path: Path, n: int, seed: int) -> list[dict]:
@@ -76,7 +92,7 @@ def sample_model_chains(paths: list[Path], n_each: int, seed: int) -> list[dict]
             lines = r["prompt"].split("\n")
             out.append({"problem": lines[0] + "\n" + (lines[1] if len(lines) > 1 else ""), "problem_id": f"{tag}:{r['id']}", "question_type": r.get("question_type", ""),
                         "frames": "frames/" + str(r.get("frames_key") or r["id"].split("_")[0]), "chain": {"triplets": r["_triplets"]},
-                        "label": f"gold {r.get('gold')}, model says {r.get('pred')}", "group": tag})
+                        "label": f"gold {r.get('gold')}, model says {r.get('pred')}", "group": tag, "gold": r.get("gold"), "pred": r.get("pred")})
     return out
 
 
@@ -116,10 +132,10 @@ def render(chains: list[dict], frames_root: Path, prefill: dict[str, str] | None
            chain_q: list[tuple[str, str]] = CHAIN_Q, intro: str = "Boxes are the detector's; entities and observations are the teacher's.") -> str:
     parts = [
         "<!doctype html><meta charset='utf-8'><title>Pseudo-label audit</title>",
-        "<style>body{font:14px system-ui;margin:20px;max-width:1100px}.chain{border:1px solid #ccc;padding:10px;margin:14px 0}"
+        ("<style>body{font:14px system-ui;margin:20px;max-width:1100px}.chain{border:1px solid #ccc;padding:10px;margin:14px 0}"
         ".step{display:flex;gap:14px;margin:8px 0;align-items:flex-start}.step img{width:320px;border:1px solid #999}"
         ".q{color:#444}label{margin-right:8px}textarea{width:100%}.opt{color:#060}"
-        ".grp{background:#234;color:#fff;padding:8px 12px;margin:28px 0 6px;position:sticky;top:0}.tag{background:#234;color:#fff;padding:1px 6px;border-radius:3px}</style>",
+        ".grp{background:#234;color:#fff;padding:8px 12px;margin:28px 0 6px;position:sticky;top:0}.tag{background:#234;color:#fff;padding:1px 6px;border-radius:3px}</style>"),
         f"<h2>{html.escape(title)}</h2>",
         f"<p>{len(chains)} chains, one per question (seed 0). Judge every step, then click <b>Download CSV</b>. {html.escape(intro)}</p>",
         "<button onclick='dl()'>Download CSV</button>",
@@ -152,16 +168,7 @@ def render(chains: list[dict], frames_root: Path, prefill: dict[str, str] | None
             parts.append(f"<div>{label}: {radio(f'c{ci}_{key}', prefill)}</div>")
         note = (prefill or {}).get(f'c{ci}_note', '')
         parts.append(f"<textarea name='c{ci}_note' rows='1' placeholder='notes'>{html.escape(note)}</textarea></div>")
-    parts.append("""<script>
-function dl(){const rows=[["name","value"]];document.querySelectorAll("input[type=radio]:checked").forEach(i=>rows.push([i.name,i.value]));
-document.querySelectorAll("textarea").forEach(t=>{if(t.value)rows.push([t.name,t.value])});
-const csv=rows.map(r=>r.map(v=>/[",\\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v).join(",")).join("\\n");const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="__CSV_NAME__";a.click();}
-// autosave: every change is kept in this browser, so a reload or a closed tab does not lose progress
-const KEY="audit:__CSV_NAME__";
-function save(){try{const o={};document.querySelectorAll("input[type=radio]:checked").forEach(i=>o[i.name]=i.value);document.querySelectorAll("textarea").forEach(t=>o[t.name]=t.value);localStorage.setItem(KEY,JSON.stringify(o));}catch(e){}}
-try{const o=JSON.parse(localStorage.getItem(KEY)||"null");if(o){for(const[k,v]of Object.entries(o)){if(k.endsWith("_note")){const t=document.querySelector('textarea[name="'+k+'"]');if(t)t.value=v;}else{const i=document.querySelector('input[name="'+k+'"][value="'+v+'"]');if(i)i.checked=true;}}}}catch(e){}
-document.addEventListener("change",save);document.addEventListener("input",save);
-</script>""")
+    parts.append(SCRIPT)
     return "\n".join(parts).replace("__CSV_NAME__", csv_name)
 
 
@@ -173,7 +180,7 @@ def _rates(values: list[str]) -> dict:
 
 def _summary(vals: dict[str, str]) -> dict:
     out: dict[str, dict] = {}
-    for key, _ in STEP_Q + MODEL_CHAIN_Q:
+    for key, _ in [*STEP_Q, *MODEL_CHAIN_Q, VERDICT_Q]:
         got = [v for k, v in vals.items() if k.endswith("_" + key)]
         if got:  # "consistent" is only asked on model sheets
             out[key] = _rates(got)
@@ -181,6 +188,51 @@ def _summary(vals: dict[str, str]) -> dict:
     if seen:
         out["onbox_given_visible"] = _rates([vals[k[: -len("visible")] + "onbox"] for k in seen if k[: -len("visible")] + "onbox" in vals])
     return out
+
+
+def render_verdict(chains: list[dict], frames_root: Path, prefill: dict[str, str] | None = None, csv_name: str = "model_verdict_audit.csv") -> str:
+    """One judgement per chain: do the steps, taken as true, support the model's yes/no verdict on the option?"""
+    parts = [
+        "<!doctype html><meta charset='utf-8'><title>Verdict audit</title>",
+        ("<style>body{font:14px system-ui;margin:20px;max-width:1100px}.chain{border:1px solid #ccc;padding:10px;margin:14px 0}"
+        ".steps{display:flex;gap:10px;margin:8px 0}.steps div{flex:1}.steps img{width:100%;border:1px solid #999}"
+        ".q{font-weight:600}label{margin-right:8px}textarea{width:100%}.opt{color:#060;font-weight:600}"
+        ".v{display:inline-block;padding:3px 8px;border-radius:3px;color:#fff;font-weight:600;margin:6px 0}.vno{background:#a33}.vyes{background:#283}"
+        ".grp{background:#234;color:#fff;padding:8px 12px;margin:28px 0 6px;position:sticky;top:0}.tag{background:#234;color:#fff;padding:1px 6px;border-radius:3px}"
+        ".rub{background:#f4f4f4;padding:8px 12px}.j{margin-top:6px;font-weight:600}</style>"),
+        "<h2>Do the steps support the model's verdict?</h2>",
+        (f"<p>{len(chains)} chains. Every item asks whether <b>one option</b> is the correct answer to the question; the model answers <b>yes</b> (the option is correct) "
+        "or <b>no</b> (the option is wrong). The option is <b>not</b> the model's answer. One judgement per chain, then <b>Download CSV</b>.</p>"),
+        ("<div class='rub'><b>yes</b>: if the steps are true, they lead to the model's verdict. For a verdict of <i>wrong</i>, the steps describe something other than the option, or contradict it; "
+        "for a verdict of <i>correct</i>, the steps state or imply the option.<br><b>no</b>: the steps lead to the opposite verdict (they state the option and the model says it is wrong, "
+        "or they describe something else and the model says it is correct).<br><b>unsure</b>: the steps do not bear on the option either way (for example, they never address what the question asks).<br>"
+        "Judge the text of the steps, not whether the boxes or the observations are right; that was the first sheet.</div>"),
+        "<button onclick='dl()'>Download CSV</button>",
+    ]
+    if prefill:
+        parts.append("<p><b>Pre-filled</b> from an earlier pass: change the ones you disagree with, then download.</p>")
+    groups = [r.get("group") for r in chains]
+    key = VERDICT_Q[0]
+    for ci, r in enumerate(chains):
+        g = groups[ci]
+        if g and (ci == 0 or groups[ci - 1] != g):
+            last = max(i for i, x in enumerate(groups) if x == g)
+            parts.append(f"<h3 class='grp'>Model {sorted(set(groups), key=groups.index).index(g) + 1} of {len(set(groups))}: {html.escape(g)} (chains {ci + 1}-{last + 1})</h3>")
+        frames_key = r["frames"].rstrip("/").rsplit("/", 1)[-1]
+        lines = r["problem"].split("\n")
+        said_yes = r["pred"] == "yes"
+        parts.append(f"<div class='chain' id='c{ci}'><b>#{ci + 1}</b> " + (f"<span class='tag'>{html.escape(g)}</span> " if g else "")
+                     + f"<span class='q'>{html.escape(lines[0])}</span><br>Is this the answer? <span class='opt'>{html.escape(lines[1] if len(lines) > 1 else '')}</span><br>"
+                     + f"<span class='v {'vyes' if said_yes else 'vno'}'>Model's verdict: {'YES, this option is correct' if said_yes else 'NO, this option is wrong'}</span><div class='steps'>")
+        for si, t in enumerate(r["chain"]["triplets"]):
+            e = t["evidence"]
+            b64 = frame_with_box(frames_root, frames_key, frame_of(int(e["t_start"]), int(e["t_end"])), e["box"], width=240)
+            parts.append(f"<div><img src='data:image/jpeg;base64,{b64}'><div><b>step {si + 1}</b>: {html.escape(t['answer'])}</div></div>")
+        parts.append(f"</div><div class='j'>{VERDICT_Q[1]} ({'this option is correct' if said_yes else 'this option is wrong'}): {radio(f'c{ci}_{key}', prefill)}</div>")
+        note = (prefill or {}).get(f"c{ci}_note", "")
+        parts.append(f"<textarea name='c{ci}_note' rows='1' placeholder='notes'>{html.escape(note)}</textarea></div>")
+    parts.append(SCRIPT)
+    return "\n".join(parts).replace("__CSV_NAME__", csv_name)
 
 
 def summarize(csv_path: Path, n_each: int | None = None, names: list[str] | None = None) -> dict:
@@ -217,6 +269,7 @@ def main() -> None:
     bm.add_argument("--n-each", type=int, default=50)
     bm.add_argument("--seed", type=int, default=0)
     bm.add_argument("--prefill", type=Path, default=None)
+    bm.add_argument("--verdict-only", action="store_true", help="one judgement per chain: the steps support the model's yes/no verdict on the option")
     s = sub.add_parser("summarize")
     s.add_argument("csv", type=Path)
     s.add_argument("--n-each", type=int, default=None, help="model sheets: also report each block of this many chains (one block per output file)")
@@ -232,6 +285,10 @@ def main() -> None:
         chains = sample_model_chains(a.outputs, a.n_each, a.seed)
         prefill = load_prefill(a.prefill) if a.prefill else None
         a.out.parent.mkdir(parents=True, exist_ok=True)
+        if a.verdict_only:
+            a.out.write_text(render_verdict(chains, a.frames / "frames", prefill, csv_name=a.out.stem + ".csv"))
+            print(f"{len(chains)} chains -> {a.out} ({a.out.stat().st_size / 1e6:.1f} MB)")
+            return
         a.out.write_text(render(chains, a.frames / "frames", prefill, title="Model citations on NExT-QA validation items: manual audit", csv_name=a.out.stem + ".csv", chain_q=MODEL_CHAIN_Q,
                                 intro=f"Chains, entities and boxes are the models' own ({a.n_each} chains per model, in the order " + ", ".join(p.name.replace("_plain.jsonl", "") for p in a.outputs) + ")."))
         print(f"{len(chains)} chains, {sum(len(c['chain']['triplets']) for c in chains)} steps -> {a.out} ({a.out.stat().st_size / 1e6:.1f} MB)")

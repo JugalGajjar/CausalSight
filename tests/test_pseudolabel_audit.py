@@ -17,3 +17,7 @@ def test_summarize_rates_and_model_blocks(tmp_path):
     q = tmp_path / "b.csv"
     q.write_text("name,value\nc0_s0_visible,yes\nc0_s0_onbox,yes\nc0_s0_relevant,yes\nc0_sufficient,yes\nc0_causal,no\n")
     assert "consistent" not in summarize(q)
+    # the verdict sheet has one judgement per chain
+    v = tmp_path / "v.csv"
+    v.write_text("name,value\nc0_verdict,yes\nc1_verdict,no\nc0_note,\"a, b\"\n")
+    assert summarize(v) == {"verdict": {"n": 2, "yes": 0.5, "no": 0.5, "unsure": 0.0}}

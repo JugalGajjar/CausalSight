@@ -47,3 +47,4 @@ data/raw/causalvqa/
 data/mix/
 results/mixed/pseudolabel_audit.html
 results/mixed/model_citation_audit.html
+results/mixed/model_verdict_audit.html
