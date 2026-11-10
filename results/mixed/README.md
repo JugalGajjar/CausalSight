@@ -273,6 +273,38 @@ phrases for entities not in the video ("the man in the blue sweater"), predicate
 path"), whole-frame boxes. The steps are relevant and would suffice if believed, but 92 of 100 chains contain only
 "where is X" observations that restate the answer the teacher was shown.
 
+## Manual audit of the models' own citations (added 2026-11-10)
+
+100 chains the trained models wrote on NExT-QA validation items: 50 from `mixsft3b_nq_plain.jsonl` (mixed chain SFT,
+chains 1-50 of the sheet) and 50 from `realrl3b_nq_plain.jsonl` (NExT-QA chain GRPO, chains 51-100), on the same 50
+questions (`cs-pseudolabel-audit build-model ... --n-each 50 --seed 0`: one item per question, uniform among items
+whose chain cites a region; 301 steps; 86 of the 100 items are wrong options). Same annotator and same judgements as
+the pseudo-label audit. Judgements in `model_citation_audit.csv`, rates in `model_citation_audit_summary.json`.
+
+| judgement (share yes) | pseudo-labels | mixed chain SFT | NExT-QA chain GRPO | both models |
+|---|---|---|---|---|
+| step: named entity visible on the cited frame | 0.823 (299) | 0.821 (151) | 0.787 (150) | 0.804 (301) |
+| step: box is on the named entity | 0.699 (299) | 0.517 (151) | 0.533 (150) | 0.525 (301) |
+| the same, where the entity is visible | 0.837 (246) | 0.629 (124) | 0.678 (118) | 0.653 (242) |
+| step: relevant to the question | 0.953 (299) | 1.000 (151) | 1.000 (150) | 1.000 (301) |
+| chain: steps suffice to answer | 0.89 (100) | 0.52 (50) | 0.50 (50) | 0.51 (100) |
+| chain: a step beyond locating an entity | 0.08 (100) | 0.06 (50) | 0.04 (50) | 0.05 (100) |
+
+- The models name entities that are on the cited frame as often as the supervision does, but put the box on them less
+  often (52% against 70%). 35 of 100 chains have every step on its entity, 28 have none. 42 of the 301 boxes cover at
+  least 80% of the frame (29 judged unsure, 13 yes).
+- This agrees with the detector check without using the detector: detection rate x hit@0.5 is 0.900 x 0.60 = 0.54
+  for mixed chain SFT and 0.908 x 0.62 = 0.56 for NExT-QA chain GRPO.
+- 32 chains repeat one observation in all steps; 5 contain a step beyond locating and describing.
+- "Suffice" is not comparable with the pseudo-label audit: those chains were written for the correct option by a
+  teacher that was shown it, here 86 of 100 items ask about a wrong option.
+- **Not reported: the sheet's third chain question ("the steps support the answer the model gave").** The items are
+  yes/no verdicts on one option, and the sheet showed them as "Option D: spoon (gold no, model says no)". The notes
+  show the option text was read as the model's answer ("model answered 'white and red' but steps say it is purple"),
+  so the column records whether the steps match the option, not whether they support the model's verdict (model says
+  no: 42 no, 22 unsure, 5 yes; model says yes: 23 yes, 8 unsure, 0 no). It is kept in the CSV but left out of the
+  paper and of `tab_model_audit.tex`.
+
 ## Self-cited evidence masking (per-option items)
 
 For every item the regions cited in the model's own unmasked chain (`E: t=a-b box=...`, mapped from the 0-127 chain
