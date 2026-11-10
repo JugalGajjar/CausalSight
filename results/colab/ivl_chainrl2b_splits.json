@@ -316,6 +316,16 @@
    "other_frame": 0.061551613592648005,
    "same_entities": null,
    "items_without_citation_under_mask": 6
+  },
+  "cite_random_same_answer": {
+   "items": 2410,
+   "steps": 8963,
+   "same_box": 0.8306370634832088,
+   "same_frame_other_place": 0.10744170478634386,
+   "other_frame": 0.0619212317304474,
+   "same_entities": null,
+   "items_without_citation_under_mask": 4,
+   "share_items": 0.9533965244865719
   }
  },
  "clevrer": {

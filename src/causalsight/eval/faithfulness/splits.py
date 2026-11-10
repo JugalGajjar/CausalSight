@@ -356,6 +356,11 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
         out["recite"] = {"cite": recite(plain, runs["mask_cite"], cids)}
         if "mask_cite_random" in runs:
             out["recite"]["cite_random"] = recite(plain, runs["mask_cite_random"], cids)
+            # stability of the citation under an irrelevant mask, only where the answer itself is unchanged
+            # (prediction-preserving filter): otherwise a moved box could reflect a changed answer
+            key = "pred" if all("pred" in plain[i] for i in cids[:1]) else "correct"
+            same = [i for i in cids if i in runs["mask_cite_random"] and runs["mask_cite_random"][i].get(key) == plain[i].get(key)]
+            out["recite"]["cite_random_same_answer"] = {**recite(plain, runs["mask_cite_random"], same), "share_items": len(same) / len(cids) if cids else None}
 
     if tracks_path and Path(tracks_path).exists():
         tracks = json.loads(Path(tracks_path).read_text())

@@ -254,6 +254,16 @@
    "other_frame": 0.09401286491835725,
    "same_entities": 0.7331525140830377,
    "items_without_citation_under_mask": 98
+  },
+  "cite_random_same_answer": {
+   "items": 4602,
+   "steps": 13584,
+   "same_box": 0.5407096584216725,
+   "same_frame_other_place": 0.3652090694935218,
+   "other_frame": 0.09408127208480566,
+   "same_entities": 0.7364189482833551,
+   "items_without_citation_under_mask": 95,
+   "share_items": 0.9603353097526068
   }
  },
  "dose": {

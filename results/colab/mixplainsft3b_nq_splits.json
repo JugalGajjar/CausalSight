@@ -126,6 +126,16 @@
    "other_frame": 0.0,
    "same_entities": null,
    "items_without_citation_under_mask": 0
+  },
+  "cite_random_same_answer": {
+   "items": 0,
+   "steps": 0,
+   "same_box": 0.0,
+   "same_frame_other_place": 0.0,
+   "other_frame": 0.0,
+   "same_entities": null,
+   "items_without_citation_under_mask": 0,
+   "share_items": 0.9794129637178964
   }
  },
  "dose": {
