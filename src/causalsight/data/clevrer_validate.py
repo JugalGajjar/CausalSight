@@ -26,7 +26,14 @@ from causalsight.data.clevrer_sim import Scene
 
 def find_annotation(root: Path, split: str, scene_index: int) -> Path:
     lo = (scene_index // 1000) * 1000
-    return root / "annotations" / split / f"annotation_{split}" / f"annotation_{lo:05d}-{lo + 1000:05d}" / f"annotation_{scene_index:05d}.json"
+    return (
+        root
+        / "annotations"
+        / split
+        / f"annotation_{split}"
+        / f"annotation_{lo:05d}-{lo + 1000:05d}"
+        / f"annotation_{scene_index:05d}.json"
+    )
 
 
 def load_questions(root: Path, split: str, n_videos: int | None) -> list[dict]:
@@ -59,15 +66,31 @@ def run_descriptive(root: Path, split: str, videos: list[dict], thresholds: list
                     if uses_motion:
                         motion_hits[t][st] += 1
                 elif len(mismatch_examples[t]) < 5:
-                    mismatch_examples[t].append((v["scene_index"], q["question"], q["program"], q["answer"], TracedExecutor.answer_str(out)))
+                    mismatch_examples[t].append(
+                        (
+                            v["scene_index"],
+                            q["question"],
+                            q["program"],
+                            q["answer"],
+                            TracedExecutor.answer_str(out),
+                        )
+                    )
     n = sum(totals.values())
     print(f"descriptive questions: {n} over {len(videos)} videos\n")
-    print(f"{'threshold':>10s} {'overall':>8s} " + " ".join(f"{st:>15s}" for st in sorted(totals)) + "   motion-only")
+    print(
+        f"{'threshold':>10s} {'overall':>8s} "
+        + " ".join(f"{st:>15s}" for st in sorted(totals))
+        + "   motion-only"
+    )
     best = None
     for t in thresholds:
         acc = sum(results[t].values()) / n
         mo = sum(motion_hits[t].values()) / max(1, sum(motion_totals.values()))
-        row = f"{t:10.3f} {acc:8.4f} " + " ".join(f"{results[t][st] / totals[st]:15.4f}" for st in sorted(totals)) + f"   {mo:.4f}"
+        row = (
+            f"{t:10.3f} {acc:8.4f} "
+            + " ".join(f"{results[t][st] / totals[st]:15.4f}" for st in sorted(totals))
+            + f"   {mo:.4f}"
+        )
         print(row)
         if best is None or acc > best[1]:
             best = (t, acc)
@@ -88,10 +111,14 @@ def run_explanatory(root: Path, split: str, videos: list[dict]) -> None:
             for c in q["choices"]:
                 ex = TracedExecutor(scene)
                 out = ex.run(c["program"] + q["program"])
-                pred = {"yes": "correct", "no": "wrong"}.get(TracedExecutor.answer_str(out), TracedExecutor.answer_str(out))
+                pred = {"yes": "correct", "no": "wrong"}.get(
+                    TracedExecutor.answer_str(out), TracedExecutor.answer_str(out)
+                )
                 tot[pred == c["answer"]] += 1
                 if pred != c["answer"] and len(examples) < 5:
-                    examples.append((v["scene_index"], q["question"], c["choice"], c["answer"], pred))
+                    examples.append(
+                        (v["scene_index"], q["question"], c["choice"], c["answer"], pred)
+                    )
     n = sum(tot.values())
     print(f"explanatory choices: {n}; agreement {tot[True] / n:.4f}")
     for e in examples:
@@ -112,14 +139,26 @@ def run_full(root: Path, split: str, videos: list[dict]) -> dict:
             if t == "descriptive":
                 out = TracedExecutor(scene).run(q["program"])
                 compared[t] += 1
-                wrong[t] += out.kind == "error" or TracedExecutor.answer_str(out) != str(q["answer"])
+                wrong[t] += out.kind == "error" or TracedExecutor.answer_str(out) != str(
+                    q["answer"]
+                )
             elif t == "explanatory":
                 for c in q["choices"]:
                     out = TracedExecutor(scene).run(c["program"] + q["program"])
                     a = TracedExecutor.answer_str(out)
                     compared[t] += 1
-                    wrong[t] += out.kind == "error" or a == UNKNOWN or a != ("yes" if c["answer"] == "correct" else "no")
-    res = {"split": split, "videos": len(videos), "compared": dict(compared), "total": sum(compared.values()), "mismatches": dict(wrong)}
+                    wrong[t] += (
+                        out.kind == "error"
+                        or a == UNKNOWN
+                        or a != ("yes" if c["answer"] == "correct" else "no")
+                    )
+    res = {
+        "split": split,
+        "videos": len(videos),
+        "compared": dict(compared),
+        "total": sum(compared.values()),
+        "mismatches": dict(wrong),
+    }
     print(json.dumps(res, indent=2))
     return res
 
@@ -129,14 +168,18 @@ def main() -> None:
     ap.add_argument("mode", choices=["descriptive", "explanatory", "full"])
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="train")
-    ap.add_argument("--n-videos", type=int, default=300, help="first N videos of the split (full mode: all)")
+    ap.add_argument(
+        "--n-videos", type=int, default=300, help="first N videos of the split (full mode: all)"
+    )
     ap.add_argument("--thresholds", default="0.02,0.05,0.1,0.15,0.2,0.3,0.5")
     args = ap.parse_args()
     videos = load_questions(args.root, args.split, None if args.mode == "full" else args.n_videos)
     if args.mode == "full":
         run_full(args.root, args.split, videos)
     elif args.mode == "descriptive":
-        run_descriptive(args.root, args.split, videos, [float(x) for x in args.thresholds.split(",")])
+        run_descriptive(
+            args.root, args.split, videos, [float(x) for x in args.thresholds.split(",")]
+        )
     else:
         run_explanatory(args.root, args.split, videos)
 

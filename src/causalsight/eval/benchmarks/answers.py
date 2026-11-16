@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import re
 
-NUMBER_WORDS = {w: str(i) for i, w in enumerate(["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"])}
+NUMBER_WORDS = {
+    w: str(i)
+    for i, w in enumerate(
+        ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"]
+    )
+}
 LETTERS = "ABCDEFGH"
 
 

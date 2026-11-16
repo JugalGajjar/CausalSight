@@ -26,7 +26,11 @@ from causalsight.data.schema import Triplet, TripletChain
 from causalsight.train.data import load_frames, load_records
 from causalsight.train.format import SYSTEM_PROMPT, format_chain
 
-ATTR_VOCAB = {**{c: COLORS for c in COLORS}, **{m: MATERIALS for m in MATERIALS}, **{s: SHAPES for s in SHAPES}}
+ATTR_VOCAB = {
+    **{c: COLORS for c in COLORS},
+    **{m: MATERIALS for m in MATERIALS},
+    **{s: SHAPES for s in SHAPES},
+}
 
 
 # ---------------------------------------------------------------- corruption
@@ -76,7 +80,14 @@ def corrupt_chain(chain: TripletChain, rng: random.Random) -> TripletChain | Non
         if new_a and new_a != t.answer:
             ts = list(chain.triplets)
             ts[i] = Triplet(t.question, new_a, t.evidence, t.depends_on, t.role)
-            return TripletChain(chain.video_id, chain.question, ts, chain.final_answer, chain.question_type, {**chain.meta, "corrupted": i})
+            return TripletChain(
+                chain.video_id,
+                chain.question,
+                ts,
+                chain.final_answer,
+                chain.question_type,
+                {**chain.meta, "corrupted": i},
+            )
     return None
 
 
@@ -92,8 +103,18 @@ class SFTTrainer:
 
         self.cfg, self.out, self.data_root = cfg, out, data_root
         out.mkdir(parents=True, exist_ok=True)
-        self.device = cfg.get("device") or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-        self.dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[cfg.get("dtype", "bfloat16")]
+        self.device = cfg.get("device") or (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
+        self.dtype = {
+            "bfloat16": torch.bfloat16,
+            "float16": torch.float16,
+            "float32": torch.float32,
+        }[cfg.get("dtype", "bfloat16")]
         self.enc = make_encoder(cfg["model"])
         model = self.enc.load_model(cfg["model"], self.dtype, cfg.get("attn", "sdpa"))
         self.processor = self.enc.processor
@@ -101,16 +122,38 @@ class SFTTrainer:
             model.gradient_checkpointing_enable()
             model.enable_input_require_grads()
         lora = cfg["lora"]
-        self.model = get_peft_model(model, LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora.get("dropout", 0.0), target_modules=lora.get("targets") or self.enc.lora_default_targets, task_type="CAUSAL_LM")).to(self.device)
+        self.model = get_peft_model(
+            model,
+            LoraConfig(
+                r=lora["r"],
+                lora_alpha=lora["alpha"],
+                lora_dropout=lora.get("dropout", 0.0),
+                target_modules=lora.get("targets") or self.enc.lora_default_targets,
+                task_type="CAUSAL_LM",
+            ),
+        ).to(self.device)
         self.model.print_trainable_parameters()
         self.records = load_records(data_root / cfg["data_file"])
         self.rng = random.Random(cfg.get("seed", 0))
         self.order = list(range(len(self.records)))
         self.rng.shuffle(self.order)
         self.accum = int(cfg.get("grad_accum", 8))
-        self.total_opt_steps = math.ceil(min(cfg.get("max_examples") or len(self.order), len(self.order)) * cfg.get("epochs", 1) / self.accum)
-        self.opt = torch.optim.AdamW([p for p in self.model.parameters() if p.requires_grad], lr=cfg["lr"], weight_decay=0.0)
-        self.sched = torch.optim.lr_scheduler.LambdaLR(self.opt, lambda s: min(1.0, (s + 1) / max(1, cfg.get("warmup", 20))) * 0.5 * (1 + math.cos(math.pi * min(1.0, s / max(1, self.total_opt_steps)))))
+        self.total_opt_steps = math.ceil(
+            min(cfg.get("max_examples") or len(self.order), len(self.order))
+            * cfg.get("epochs", 1)
+            / self.accum
+        )
+        self.opt = torch.optim.AdamW(
+            [p for p in self.model.parameters() if p.requires_grad], lr=cfg["lr"], weight_decay=0.0
+        )
+        self.sched = torch.optim.lr_scheduler.LambdaLR(
+            self.opt,
+            lambda s: (
+                min(1.0, (s + 1) / max(1, cfg.get("warmup", 20)))
+                * 0.5
+                * (1 + math.cos(math.pi * min(1.0, s / max(1, self.total_opt_steps))))
+            ),
+        )
         self.example = 0  # examples consumed
         self.opt_step = 0
         self.log = (out / "log.jsonl").open("a")
@@ -121,7 +164,17 @@ class SFTTrainer:
         import torch
 
         self.model.save_pretrained(self.out / "adapter")
-        torch.save({"example": self.example, "opt_step": self.opt_step, "order": self.order, "rng": self.rng.getstate(), "opt": self.opt.state_dict(), "sched": self.sched.state_dict()}, self.out / "trainer_state.pt")
+        torch.save(
+            {
+                "example": self.example,
+                "opt_step": self.opt_step,
+                "order": self.order,
+                "rng": self.rng.getstate(),
+                "opt": self.opt.state_dict(),
+                "sched": self.sched.state_dict(),
+            },
+            self.out / "trainer_state.pt",
+        )
 
     def _load_state(self) -> None:
         import torch
@@ -133,7 +186,9 @@ class SFTTrainer:
             print("no checkpoint; starting fresh")
             return
         st = torch.load(p, map_location="cpu", weights_only=False)
-        set_peft_model_state_dict(self.model, load_file(self.out / "adapter" / "adapter_model.safetensors"))
+        set_peft_model_state_dict(
+            self.model, load_file(self.out / "adapter" / "adapter_model.safetensors")
+        )
         self.opt.load_state_dict(st["opt"])
         self.sched.load_state_dict(st["sched"])
         self.example, self.opt_step, self.order = st["example"], st["opt_step"], st["order"]
@@ -144,7 +199,9 @@ class SFTTrainer:
 
     def _encode(self, rec: dict, frames, response: str):
         """Returns processor inputs for prompt+response and the prompt length (tokens), so labels can mask the prompt."""
-        return self.enc.full_inputs(frames, rec["problem"] + "\n" + SYSTEM_PROMPT, response, self.device)
+        return self.enc.full_inputs(
+            frames, rec["problem"] + "\n" + SYSTEM_PROMPT, response, self.device
+        )
 
     def _token_logprobs(self, inputs, prompt_len: int):
         import torch
@@ -159,7 +216,9 @@ class SFTTrainer:
         tok = self.processor.tokenizer
         head = response[: response.index("<answer>") + len("<answer>")]
         body = response[: response.index("</answer>")]
-        return len(tok(head, add_special_tokens=False)["input_ids"]), len(tok(body, add_special_tokens=False)["input_ids"])
+        return len(tok(head, add_special_tokens=False)["input_ids"]), len(
+            tok(body, add_special_tokens=False)["input_ids"]
+        )
 
     # ---- step
 
@@ -203,12 +262,20 @@ class SFTTrainer:
             acc.append(self.train_example(rec))
             self.example += 1
             if self.example % self.accum == 0 or self.example == n:
-                gn = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.get("max_grad_norm", 1.0))
+                gn = torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), self.cfg.get("max_grad_norm", 1.0)
+                )
                 self.opt.step()
                 self.sched.step()
                 self.opt.zero_grad(set_to_none=True)
                 self.opt_step += 1
-                row = {"opt_step": self.opt_step, "example": self.example, "sec": round(time.time() - t0, 1), "lr": self.sched.get_last_lr()[0], "grad_norm": float(gn)}
+                row = {
+                    "opt_step": self.opt_step,
+                    "example": self.example,
+                    "sec": round(time.time() - t0, 1),
+                    "lr": self.sched.get_last_lr()[0],
+                    "grad_norm": float(gn),
+                }
                 for k in ("nll", "loss", "bridge", "p_ans_corrupted"):
                     vals = [a[k] for a in acc if k in a]
                     if vals:
@@ -217,7 +284,14 @@ class SFTTrainer:
                 self.log.write(json.dumps(row) + "\n")
                 self.log.flush()
                 if self.opt_step % self.cfg.get("log_every", 1) == 0:
-                    print(json.dumps({k: (round(v, 5) if isinstance(v, float) else v) for k, v in row.items()}))
+                    print(
+                        json.dumps(
+                            {
+                                k: (round(v, 5) if isinstance(v, float) else v)
+                                for k, v in row.items()
+                            }
+                        )
+                    )
                 if self.opt_step % self.cfg.get("save_every", 100) == 0 or self.example == n:
                     self._save_state()
                     print(f"saved checkpoint at opt step {self.opt_step}")

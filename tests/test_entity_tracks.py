@@ -27,7 +27,11 @@ RAW = (
 )
 TRACKS = {
     "v1": {
-        "the white dog": {"0": [0.1, 0.2, 0.4, 0.6], "5": [0.2, 0.2, 0.5, 0.6], "15": [0.3, 0.3, 0.6, 0.7]},
+        "the white dog": {
+            "0": [0.1, 0.2, 0.4, 0.6],
+            "5": [0.2, 0.2, 0.5, 0.6],
+            "15": [0.3, 0.3, 0.6, 0.7],
+        },
         "the man": {"7": [0.5, 0.1, 0.7, 0.5]},
         "the ball": {"3": [0.0, 0.0, 0.1, 0.1]},  # named by another item: not this item's entity
     }
@@ -37,13 +41,22 @@ TRACKS = {
 def write_outputs(path: Path):
     rows = [
         {"id": "v1_3_0", "qid": "v1_3", "frames_key": "v1", "raw": RAW, "correct": 1},
-        {"id": "v1_3_1", "qid": "v1_3", "frames_key": "v1", "raw": "<think>\n[1] Q: Where is the cat? | A: cat | E: t=0-8 box=(0.1,0.1,0.2,0.2) | deps=\n</think>\n<answer>no</answer>", "correct": 1},
+        {
+            "id": "v1_3_1",
+            "qid": "v1_3",
+            "frames_key": "v1",
+            "raw": "<think>\n[1] Q: Where is the cat? | A: cat | E: t=0-8 box=(0.1,0.1,0.2,0.2) | deps=\n</think>\n<answer>no</answer>",
+            "correct": 1,
+        },
     ]
     path.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
 
 
 def test_entities_and_phrases(tmp_path):
-    assert item_entities(RAW) == ["the white dog", "the man"]  # pseudo-label index stripped, whole-frame step ignored
+    assert item_entities(RAW) == [
+        "the white dog",
+        "the man",
+    ]  # pseudo-label index stripped, whole-frame step ignored
     out = tmp_path / "m_nq_plain.jsonl"
     write_outputs(out)
     assert phrases_by_video([out]) == {"v1": {"the white dog", "the man", "the cat"}}
@@ -56,10 +69,20 @@ def test_index_unions_tracks_and_citations(tmp_path):
     idx = EntityTrackIndex.load(tmp_path / "tracks.json", out)
     regs = idx.get("v1_3_0")
     g = grid_position
-    assert (g(0), g(0), (0.1, 0.2, 0.4, 0.6)) in regs and (g(5), g(5), (0.2, 0.2, 0.5, 0.6)) in regs and (g(15), g(15), (0.3, 0.3, 0.6, 0.7)) in regs
+    assert (
+        (g(0), g(0), (0.1, 0.2, 0.4, 0.6)) in regs
+        and (g(5), g(5), (0.2, 0.2, 0.5, 0.6)) in regs
+        and (g(15), g(15), (0.3, 0.3, 0.6, 0.7)) in regs
+    )
     assert (g(7), g(7), (0.5, 0.1, 0.7, 0.5)) in regs
-    assert (4, 12, (0.1, 0.2, 0.4, 0.6)) in regs and (60, 68, (0.5, 0.1, 0.7, 0.5)) in regs  # own citations kept
-    assert not any(b == (0.0, 0.0, 0.1, 0.1) for _, _, b in regs)  # the ball belongs to another item
+    assert (4, 12, (0.1, 0.2, 0.4, 0.6)) in regs and (
+        60,
+        68,
+        (0.5, 0.1, 0.7, 0.5),
+    ) in regs  # own citations kept
+    assert not any(
+        b == (0.0, 0.0, 0.1, 0.1) for _, _, b in regs
+    )  # the ball belongs to another item
     assert idx.get("v1_3_1") == []  # 'the cat' was never detected: skipped under both track modes
 
 
@@ -73,11 +96,17 @@ def test_grid_regions_hit_exactly_their_frame():
 
 
 def test_control_keeps_size_and_timing_and_avoids_entity_boxes():
-    regs = [(grid_position(5), grid_position(5), (0.1, 0.2, 0.4, 0.6)), (grid_position(5), grid_position(5), (0.5, 0.1, 0.7, 0.5)), (4, 12, (0.1, 0.2, 0.4, 0.6))]
+    regs = [
+        (grid_position(5), grid_position(5), (0.1, 0.2, 0.4, 0.6)),
+        (grid_position(5), grid_position(5), (0.5, 0.1, 0.7, 0.5)),
+        (4, 12, (0.1, 0.2, 0.4, 0.6)),
+    ]
     ctrl = avoiding_random_regions(regs, CHAIN_SCALE, 16, random.Random(0))
     assert [(t0, t1) for t0, t1, _ in ctrl] == [(t0, t1) for t0, t1, _ in regs]
     for (_, _, a), (_, _, b) in zip(regs, ctrl):
-        assert abs((a[2] - a[0]) - (b[2] - b[0])) < 1e-9 and abs((a[3] - a[1]) - (b[3] - b[1])) < 1e-9
+        assert (
+            abs((a[2] - a[0]) - (b[2] - b[0])) < 1e-9 and abs((a[3] - a[1]) - (b[3] - b[1])) < 1e-9
+        )
     from causalsight.eval.masking import _iou
 
     boxes_f5 = [b for t0, t1, b in regs if 5 in frames_hit((t0, t1, b), CHAIN_SCALE, 16)]
@@ -92,13 +121,21 @@ def test_track_summary_counts_frames():
 
 def test_report_cite_track_gap_on_correct_subset(tmp_path):
     ids = [f"q{i}" for i in range(4)]
-    mk = lambda correct, sub=None: [{"id": i, "question_type": "causal", "correct": c} for i, c in zip(ids, correct) if sub is None or i in sub]
-    w = lambda name, rows: (tmp_path / f"m_{name}.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+    mk = lambda correct, sub=None: [
+        {"id": i, "question_type": "causal", "correct": c}
+        for i, c in zip(ids, correct)
+        if sub is None or i in sub
+    ]
+    w = lambda name, rows: (tmp_path / f"m_{name}.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n"
+    )
     w("plain", mk([1, 1, 1, 0]))
     w("blind", mk([1, 0, 0, 0]))
     w("mask_cite", mk([1, 1, 1, 0]))
     w("mask_cite_random", mk([1, 1, 1, 0]))
-    w("mask_cite_track", mk([0, 0, 1, 0], sub={"q0", "q1", "q2"}))  # run only on the items correct in plain
+    w(
+        "mask_cite_track", mk([0, 0, 1, 0], sub={"q0", "q1", "q2"})
+    )  # run only on the items correct in plain
     w("mask_cite_track_random", mk([1, 1, 1, 0], sub={"q0", "q1", "q2"}))
     r = report(tmp_path, "m")["ALL"]
     assert r["cite_gap"] == 0.0 and r["n_cite_track"] == 3

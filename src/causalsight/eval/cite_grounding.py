@@ -105,7 +105,8 @@ def score(rows: list[dict], detect: Callable[[str, int, str], Box | None], seed:
     for k, a in agg.items():
         nd = a["n_detected"]
         out[k] = {
-            "n_items": int(a["n_items"]), "n_steps": int(a["n_steps"]),
+            "n_items": int(a["n_items"]),
+            "n_steps": int(a["n_steps"]),
             "detected_rate": round(nd / a["n_steps"], 3) if a["n_steps"] else None,
             "mean_iou": round(a["iou_sum"] / nd, 3) if nd else None,
             "hit50": round(a["hit50"] / nd, 3) if nd else None,
@@ -116,7 +117,9 @@ def score(rows: list[dict], detect: Callable[[str, int, str], Box | None], seed:
     return out
 
 
-def dino_detector(pack: Path, detector: str, threshold: float) -> Callable[[str, int, str], Box | None]:
+def dino_detector(
+    pack: Path, detector: str, threshold: float
+) -> Callable[[str, int, str], Box | None]:
     import torch
     from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
@@ -135,7 +138,13 @@ def dino_detector(pack: Path, detector: str, threshold: float) -> Callable[[str,
         inputs = proc(images=img, text=phrase.lower() + " .", return_tensors="pt").to(device)
         with torch.no_grad():
             o = det(**inputs)
-        res = proc.post_process_grounded_object_detection(o, inputs.input_ids, threshold=threshold, text_threshold=threshold, target_sizes=[img.size[::-1]])[0]
+        res = proc.post_process_grounded_object_detection(
+            o,
+            inputs.input_ids,
+            threshold=threshold,
+            text_threshold=threshold,
+            target_sizes=[img.size[::-1]],
+        )[0]
         if not len(res["scores"]):
             return None
         i = int(res["scores"].argmax())
@@ -147,25 +156,52 @@ def dino_detector(pack: Path, detector: str, threshold: float) -> Callable[[str,
 
 
 def to_markdown(rep: dict, tag: str) -> str:
-    cols = ["n_items", "n_steps", "detected_rate", "mean_iou", "hit50", "random_mean_iou", "random_hit50"]
-    lines = [f"Citation grounding: {tag}", "", "| type | " + " | ".join(cols) + " |", "|---" * (len(cols) + 1) + "|"]
+    cols = [
+        "n_items",
+        "n_steps",
+        "detected_rate",
+        "mean_iou",
+        "hit50",
+        "random_mean_iou",
+        "random_hit50",
+    ]
+    lines = [
+        f"Citation grounding: {tag}",
+        "",
+        "| type | " + " | ".join(cols) + " |",
+        "|---" * (len(cols) + 1) + "|",
+    ]
     for k in ["ALL"] + sorted(x for x in rep if x != "ALL"):
-        lines.append(f"| {k} | " + " | ".join("" if rep[k].get(c) is None else str(rep[k][c]) for c in cols) + " |")
+        lines.append(
+            f"| {k} | "
+            + " | ".join("" if rep[k].get(c) is None else str(rep[k][c]) for c in cols)
+            + " |"
+        )
     return "\n".join(lines) + "\n"
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("outputs", type=Path, help="harness per-item jsonl of a chain model (plain run)")
-    ap.add_argument("--pack", type=Path, required=True, help="NExT-QA pack with frames/<video>/fNN.jpg")
-    ap.add_argument("--out", type=Path, required=True, help="json report (a .md next to it is written too)")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "outputs", type=Path, help="harness per-item jsonl of a chain model (plain run)"
+    )
+    ap.add_argument(
+        "--pack", type=Path, required=True, help="NExT-QA pack with frames/<video>/fNN.jpg"
+    )
+    ap.add_argument(
+        "--out", type=Path, required=True, help="json report (a .md next to it is written too)"
+    )
     ap.add_argument("--detector", default="IDEA-Research/grounding-dino-tiny")
     ap.add_argument("--threshold", type=float, default=0.35)
     ap.add_argument("--limit", type=int, default=None, help="first N items (pilot)")
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     rows = [json.loads(l) for l in a.outputs.open()]
-    rows.sort(key=lambda r: (r.get("frames_key") or r["id"].split("_")[0], r["id"]))  # one video's frames at a time
+    rows.sort(
+        key=lambda r: (r.get("frames_key") or r["id"].split("_")[0], r["id"])
+    )  # one video's frames at a time
     if a.limit:
         rows = rows[: a.limit]
     rep = score(rows, dino_detector(a.pack, a.detector, a.threshold), a.seed)

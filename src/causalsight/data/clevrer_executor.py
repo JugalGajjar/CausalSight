@@ -129,7 +129,11 @@ class TracedExecutor:
 
     def m_all_events(self, op: str) -> Val:
         ids = self.s.object_ids()
-        evs = [Event("collision", -1, (ids[i], ids[j])) for i in range(len(ids)) for j in range(i + 1, len(ids))]
+        evs = [
+            Event("collision", -1, (ids[i], ids[j]))
+            for i in range(len(ids))
+            for j in range(i + 1, len(ids))
+        ]
         return Val("events", evs, quals=["possible collisions"])
 
     def m_unseen_events(self, op: str) -> Val:
@@ -176,9 +180,15 @@ class TracedExecutor:
             return Val("error", ERROR)
         if entry.kind == "event":
             e: Event = entry.data
-            hit = any(x.type == e.type and set(x.objects) == set(e.objects) for x in events.data if x.type not in ("start", "end"))
+            hit = any(
+                x.type == e.type and set(x.objects) == set(e.objects)
+                for x in events.data
+                if x.type not in ("start", "end")
+            )
         elif entry.kind == "object":
-            hit = any(entry.data in x.objects for x in events.data if x.type not in ("start", "end"))
+            hit = any(
+                entry.data in x.objects for x in events.data if x.type not in ("start", "end")
+            )
         else:
             return Val("error", ERROR)
         return Val("bool", "yes" if hit else "no", quals=list(events.quals))
@@ -195,7 +205,9 @@ class TracedExecutor:
             return Val("error", ERROR)
         f = None if frame.kind == "null" else frame.data
         moving = op == "filter_moving"
-        keep = [o for o in objs.data if self.s.is_visible(o, f) and self.s.is_moving(o, f) == moving]
+        keep = [
+            o for o in objs.data if self.s.is_visible(o, f) and self.s.is_moving(o, f) == moving
+        ]
         q = ("moving" if moving else "stationary") + (self._frame_phrase(frame))
         return Val("objects", keep, attrs=dict(objs.attrs), quals=[q])
 
@@ -225,7 +237,11 @@ class TracedExecutor:
             return Val("error", ERROR)
         typ = {"filter_in": "in", "filter_out": "out", "filter_collision": "collision"}[op]
         keep = [e for e in events.data if e.type == typ and any(o in ids for o in e.objects)]
-        noun = {"in": "entries into the scene", "out": "exits from the scene", "collision": "collisions"}[typ]
+        noun = {
+            "in": "entries into the scene",
+            "out": "exits from the scene",
+            "collision": "collisions",
+        }[typ]
         if objs.kind == "object":
             who = self.s.describe(objs.data, objs.attrs or None)
         elif objs.attrs or objs.quals:
@@ -243,7 +259,11 @@ class TracedExecutor:
 
     def _plural(self, objs: Val) -> str:
         a = objs.attrs
-        parts = [a.get("color"), a.get("material"), (a.get("shape") + "s") if a.get("shape") else "objects"]
+        parts = [
+            a.get("color"),
+            a.get("material"),
+            (a.get("shape") + "s") if a.get("shape") else "objects",
+        ]
         base = " ".join(p for p in parts if p)
         return (objs.quals[0] + " " + base) if objs.quals else base
 
@@ -262,7 +282,11 @@ class TracedExecutor:
         before = op == "filter_before"
         keep = [x for x in events.data if (x.frame < e.frame if before else x.frame > e.frame)]
         rel = "before" if before else "after"
-        return Val("events", keep, quals=list(events.quals) + [f"{rel} {self.describe_event(e, clause=True)}"])
+        return Val(
+            "events",
+            keep,
+            quals=list(events.quals) + [f"{rel} {self.describe_event(e, clause=True)}"],
+        )
 
     def m_filter_ancestor(self, op: str, events: Val, event: Val) -> Val:
         if events.kind != "events" or event.kind != "event":
@@ -298,7 +322,13 @@ class TracedExecutor:
     def m_get_counterfact(self, op: str, events: Val, obj: Val) -> Val:
         if events.kind != "events" or obj.kind != "object":
             return Val("error", ERROR)
-        return Val("unknown", UNKNOWN, quals=[f"collisions that would happen if {self.s.describe(obj.data, obj.attrs or None)} were removed"])
+        return Val(
+            "unknown",
+            UNKNOWN,
+            quals=[
+                f"collisions that would happen if {self.s.describe(obj.data, obj.attrs or None)} were removed"
+            ],
+        )
 
     # ---- descriptions
 
@@ -308,11 +338,23 @@ class TracedExecutor:
         tail = "" if e.frame < 0 else f" at frame {e.frame}"
         if e.type == "collision":
             a, b = e.objects
-            return f"{d(a)} and {d(b)} collide{tail}" if clause else f"the collision between {d(a)} and {d(b)}{tail}"
+            return (
+                f"{d(a)} and {d(b)} collide{tail}"
+                if clause
+                else f"the collision between {d(a)} and {d(b)}{tail}"
+            )
         if e.type == "in":
-            return f"{d(e.objects[0])} enters the scene{tail}" if clause else f"{d(e.objects[0])} entering the scene{tail}"
+            return (
+                f"{d(e.objects[0])} enters the scene{tail}"
+                if clause
+                else f"{d(e.objects[0])} entering the scene{tail}"
+            )
         if e.type == "out":
-            return f"{d(e.objects[0])} exits the scene{tail}" if clause else f"{d(e.objects[0])} exiting the scene{tail}"
+            return (
+                f"{d(e.objects[0])} exits the scene{tail}"
+                if clause
+                else f"{d(e.objects[0])} exiting the scene{tail}"
+            )
         if e.type == "start":
             return "the video begins" if clause else "the start of the video"
         return "the video ends" if clause else "the end of the video"

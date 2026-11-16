@@ -36,7 +36,9 @@ def span_tolerance(n_total: int, n_sampled: int) -> int:
     return max(0, round((n_total - 1) / (n_sampled - 1) / 2))
 
 
-def mask_frames(frames: list[Image.Image], regions: list[Region], n_total: int) -> list[Image.Image]:
+def mask_frames(
+    frames: list[Image.Image], regions: list[Region], n_total: int
+) -> list[Image.Image]:
     idx = sampled_frame_indices(n_total, len(frames))
     tol = span_tolerance(n_total, len(frames))
     out = []
@@ -77,7 +79,12 @@ def masked_fraction(regions: list[Region], n_total: int) -> float:
 def decisive_triplets(chain: dict) -> list[dict]:
     ts = chain["triplets"]
     if chain.get("question_type") in ("predictive", "counterfactual"):
-        obs = [t for t in ts if t.get("role") == "observe" or (t.get("role") is None and t["question"].startswith("Do "))]
+        obs = [
+            t
+            for t in ts
+            if t.get("role") == "observe"
+            or (t.get("role") is None and t["question"].startswith("Do "))
+        ]
         if obs:
             return obs
     return ts[-1:]
@@ -86,9 +93,15 @@ def decisive_triplets(chain: dict) -> list[dict]:
 class EvidenceIndex:
     """Evidence regions per CLEVRER question, from generated chain files. Key: '<scene>_<qid>'."""
 
-    def __init__(self, regions: dict[str, list[Region]], option_regions: dict[str, list[Region]] | None = None) -> None:
+    def __init__(
+        self,
+        regions: dict[str, list[Region]],
+        option_regions: dict[str, list[Region]] | None = None,
+    ) -> None:
         self.regions = regions
-        self.option_regions = option_regions or {}  # key '<scene>_<qid>_<choice_id>': that option's own chain
+        self.option_regions = (
+            option_regions or {}
+        )  # key '<scene>_<qid>_<choice_id>': that option's own chain
 
     @classmethod
     def from_chains(cls, path: Path | str, last_only: bool = False) -> EvidenceIndex:
@@ -103,7 +116,7 @@ class EvidenceIndex:
                 c = json.loads(line)
                 key = f"{c['meta']['scene_index']}_{c['meta']['question_id']}"
                 cid = c["meta"].get("choice_id")
-                for t in (decisive_triplets(c) if last_only else c["triplets"]):
+                for t in decisive_triplets(c) if last_only else c["triplets"]:
                     e = t["evidence"]
                     box = tuple(e["box"])
                     if box == (0.0, 0.0, 1.0, 1.0):
@@ -111,7 +124,9 @@ class EvidenceIndex:
                     regions[key].add((e["t_start"], e["t_end"], box))
                     if cid is not None:
                         opt[f"{key}_{cid}"].add((e["t_start"], e["t_end"], box))
-        return cls({k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()})
+        return cls(
+            {k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()}
+        )
 
     @classmethod
     def from_outputs(cls, path: Path | str) -> EvidenceIndex:
@@ -136,7 +151,9 @@ class EvidenceIndex:
                     reg = (e.t_start, e.t_end, tuple(e.box))
                     opt[r["id"]].add(reg)
                     regions[qid].add(reg)
-        return cls({k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()})
+        return cls(
+            {k: sorted(v) for k, v in regions.items()}, {k: sorted(v) for k, v in opt.items()}
+        )
 
     def get(self, key: str) -> list[Region]:
         return self.regions.get(key, [])
@@ -185,16 +202,25 @@ class TrackMasker:
 
         if scene_index not in self._cache:
             self._cache.clear()
-            self._cache[scene_index] = ProposalIndex.load(self.root / f"proposal_{scene_index:05d}.json")
+            self._cache[scene_index] = ProposalIndex.load(
+                self.root / f"proposal_{scene_index:05d}.json"
+            )
         return self._cache[scene_index]
 
-    def evidence_objects(self, scene_index: int, regions: list[Region]) -> set[tuple[str, str, str]]:
+    def evidence_objects(
+        self, scene_index: int, regions: list[Region]
+    ) -> set[tuple[str, str, str]]:
         idx = self._index(scene_index)
         found: set[tuple[str, str, str]] = set()
         for t0, t1, box in regions:
             for f in range(t0, t1 + 1):
                 for key, (b, _score) in idx._frame(f).items():
-                    contained = b[0] >= box[0] - 0.01 and b[1] >= box[1] - 0.01 and b[2] <= box[2] + 0.01 and b[3] <= box[3] + 0.01
+                    contained = (
+                        b[0] >= box[0] - 0.01
+                        and b[1] >= box[1] - 0.01
+                        and b[2] <= box[2] + 0.01
+                        and b[3] <= box[3] + 0.01
+                    )
                     if contained or _iou(b, box) >= self.min_iou:
                         found.add(key)
         return found
@@ -206,7 +232,9 @@ class TrackMasker:
             keys |= set(idx._frame(f).keys())
         return keys
 
-    def track_regions(self, scene_index: int, objects: set[tuple[str, str, str]], sampled: list[int]) -> list[Region]:
+    def track_regions(
+        self, scene_index: int, objects: set[tuple[str, str, str]], sampled: list[int]
+    ) -> list[Region]:
         """One single-frame region per (object, sampled frame) where the object is detected."""
         idx = self._index(scene_index)
         regs: list[Region] = []
@@ -217,7 +245,15 @@ class TrackMasker:
                     regs.append((f, f, fr[key][0]))
         return regs
 
-    def regions_for(self, scene_index: int, regions: list[Region], n_total: int, n_sampled: int, control: bool, rng: random.Random) -> list[Region]:
+    def regions_for(
+        self,
+        scene_index: int,
+        regions: list[Region],
+        n_total: int,
+        n_sampled: int,
+        control: bool,
+        rng: random.Random,
+    ) -> list[Region]:
         """Evidence-object tracks, or (control) copies of those tracks at random positions that do not
         overlap the evidence boxes on the same frame: same masked area and timing, different place."""
         sampled = sampled_frame_indices(n_total, n_sampled)

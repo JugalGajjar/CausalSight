@@ -62,7 +62,10 @@ def main() -> None:
     csft = [_abs_frames(r, a.clevrer_frames) for r in csft[: a.clevrer_n]]
 
     nsft_all = [json.loads(line) for line in a.nextqa_sft.open()]
-    by_gold = {"yes": [r for r in nsft_all if r["gold"] == "yes"], "no": [r for r in nsft_all if r["gold"] == "no"]}
+    by_gold = {
+        "yes": [r for r in nsft_all if r["gold"] == "yes"],
+        "no": [r for r in nsft_all if r["gold"] == "no"],
+    }
     nsft = []
     for g in ("yes", "no"):
         rng.shuffle(by_gold[g])

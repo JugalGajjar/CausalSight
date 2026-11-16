@@ -56,7 +56,9 @@ class Parsed:
     has_tags: bool
 
 
-def parse_chain(text: str, video_id: str = "", question: str = "", question_type: str | None = None) -> Parsed:
+def parse_chain(
+    text: str, video_id: str = "", question: str = "", question_type: str | None = None
+) -> Parsed:
     think = THINK_RE.search(text)
     ans = ANSWER_RE.search(text)
     answer = ans.group(1).strip() if ans else None
@@ -76,17 +78,35 @@ def parse_chain(text: str, video_id: str = "", question: str = "", question_type
             ev = Evidence(
                 t_start=int(m.group("t0")),
                 t_end=int(m.group("t1")),
-                box=(float(m.group("x0")), float(m.group("y0")), float(m.group("x1")), float(m.group("y1"))),
+                box=(
+                    float(m.group("x0")),
+                    float(m.group("y0")),
+                    float(m.group("x1")),
+                    float(m.group("y1")),
+                ),
             )
             deps_txt = [d.strip() for d in m.group("deps").split(",") if d.strip()]
             deps = tuple(sorted(ids[int(d)] for d in deps_txt if int(d) in ids))
         except (ValueError, KeyError):
             return Parsed(None, answer, len(lines), n_steps, True)
         ids[sid] = len(triplets)
-        triplets.append(Triplet(question=m.group("q").strip(), answer=m.group("a").strip(), evidence=ev, depends_on=deps))
+        triplets.append(
+            Triplet(
+                question=m.group("q").strip(),
+                answer=m.group("a").strip(),
+                evidence=ev,
+                depends_on=deps,
+            )
+        )
     if not triplets or answer is None:
         return Parsed(None, answer, len(lines), n_steps, True)
-    chain = TripletChain(video_id=video_id, question=question, triplets=triplets, final_answer=answer, question_type=question_type)
+    chain = TripletChain(
+        video_id=video_id,
+        question=question,
+        triplets=triplets,
+        final_answer=answer,
+        question_type=question_type,
+    )
     try:
         chain.validate()
     except ValueError:

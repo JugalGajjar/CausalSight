@@ -10,7 +10,9 @@ from __future__ import annotations
 from causalsight.data.schema import TripletChain
 
 
-def order_violations(pred: TripletChain, ref: TripletChain, matching: dict[int, int]) -> tuple[int, int]:
+def order_violations(
+    pred: TripletChain, ref: TripletChain, matching: dict[int, int]
+) -> tuple[int, int]:
     """Count reference edges (j -> k) whose matched predictions are reversed or missing a dep link.
 
     `matching` maps reference index -> predicted index. Returns (violations, total_edges).

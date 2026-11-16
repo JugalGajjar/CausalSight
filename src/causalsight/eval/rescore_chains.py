@@ -1,6 +1,6 @@
 """Recompute chain-level metrics from saved per-item outputs (no model needed).
 
-  cs-rescore-chains <results_dir> --tag sft3b --chains <chains.jsonl> [--condition plain]
+cs-rescore-chains <results_dir> --tag sft3b --chains <chains.jsonl> [--condition plain]
 """
 
 from __future__ import annotations
@@ -22,7 +22,12 @@ def main() -> None:
     ap.add_argument("--tag", required=True)
     ap.add_argument("--chains", type=Path, required=True)
     ap.add_argument("--condition", default="plain")
-    ap.add_argument("--proposals", type=Path, default=None, help="derender proposals dir: adds frame-consistent object grounding")
+    ap.add_argument(
+        "--proposals",
+        type=Path,
+        default=None,
+        help="derender proposals dir: adds frame-consistent object grounding",
+    )
     a = ap.parse_args()
     props: dict[int, ProposalIndex] = {}
 

@@ -62,14 +62,18 @@ def phrases_by_video(output_files: Iterable[Path]) -> dict[str, set[str]]:
     return out
 
 
-def build_tracks(phrases: dict[str, set[str]], detect_all: Callable[[str, str], list[Box | None]]) -> dict[str, dict[str, dict[str, list[float]]]]:
+def build_tracks(
+    phrases: dict[str, set[str]], detect_all: Callable[[str, str], list[Box | None]]
+) -> dict[str, dict[str, dict[str, list[float]]]]:
     """detect_all(video, phrase) -> top detection (or None) on each of the N_FRAMES sampled frames."""
     tracks: dict[str, dict[str, dict[str, list[float]]]] = {}
     for video in sorted(phrases):
         tracks[video] = {}
         for phrase in sorted(phrases[video]):
             dets = detect_all(video, phrase)
-            tracks[video][phrase] = {str(f): [round(v, 4) for v in b] for f, b in enumerate(dets) if b is not None}
+            tracks[video][phrase] = {
+                str(f): [round(v, 4) for v in b] for f, b in enumerate(dets) if b is not None
+            }
     return tracks
 
 
@@ -82,13 +86,19 @@ def track_summary(tracks: dict) -> dict:
         "videos": len(tracks),
         "entities": len(counts),
         "mean_frames_detected": round(sum(counts) / len(counts), 2) if counts else None,
-        "share_detected_on_8_or_more_frames": round(sum(c >= 8 for c in counts) / len(counts), 3) if counts else None,
-        "share_never_detected": round(sum(c == 0 for c in counts) / len(counts), 3) if counts else None,
+        "share_detected_on_8_or_more_frames": round(sum(c >= 8 for c in counts) / len(counts), 3)
+        if counts
+        else None,
+        "share_never_detected": round(sum(c == 0 for c in counts) / len(counts), 3)
+        if counts
+        else None,
         "frames_detected_histogram": {str(k): hist[k] for k in sorted(hist)},
     }
 
 
-def dino_detect_all(pack: Path, detector: str, threshold: float) -> Callable[[str, str], list[Box | None]]:
+def dino_detect_all(
+    pack: Path, detector: str, threshold: float
+) -> Callable[[str, str], list[Box | None]]:
     """One batched detector call per (video, phrase) over the pack's 16 frames."""
     import torch
     from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
@@ -109,10 +119,18 @@ def dino_detect_all(pack: Path, detector: str, threshold: float) -> Callable[[st
     def detect_all(video: str, phrase: str) -> list[Box | None]:
         frames = frames_of(video)
         text = phrase.lower() + " ."
-        inputs = proc(images=frames, text=[text] * len(frames), return_tensors="pt", padding=True).to(device)
+        inputs = proc(
+            images=frames, text=[text] * len(frames), return_tensors="pt", padding=True
+        ).to(device)
         with torch.no_grad():
             o = det(**inputs)
-        res = proc.post_process_grounded_object_detection(o, inputs.input_ids, threshold=threshold, text_threshold=threshold, target_sizes=[im.size[::-1] for im in frames])
+        res = proc.post_process_grounded_object_detection(
+            o,
+            inputs.input_ids,
+            threshold=threshold,
+            text_threshold=threshold,
+            target_sizes=[im.size[::-1] for im in frames],
+        )
         out: list[Box | None] = []
         for im, r in zip(frames, res):
             if not len(r["scores"]):
@@ -142,7 +160,9 @@ def frames_hit(region: Region, n_total: int, n_sampled: int) -> list[int]:
     return [f for f, orig in enumerate(idx) if t0 - tol <= orig <= t1 + tol]
 
 
-def avoiding_random_regions(regions: list[Region], n_total: int, n_sampled: int, rng: random.Random, tries: int = 30) -> list[Region]:
+def avoiding_random_regions(
+    regions: list[Region], n_total: int, n_sampled: int, rng: random.Random, tries: int = 30
+) -> list[Region]:
     """Same spans and box sizes as `regions`, at random positions that avoid (lowest IoU with, ideally zero) every
     intervention box on the frames each region hits: identical masked area and timing, different place."""
     by_frame: dict[int, list[Box]] = defaultdict(list)
@@ -171,7 +191,14 @@ class EntityTrackIndex:
     """Per-item regions for the entity-track test: every detection, on every sampled frame, of every entity the
     item's own chain names, plus the regions the chain cited. Single-frame regions on the chain grid."""
 
-    def __init__(self, tracks: dict, entities: dict[str, list[str]], videos: dict[str, str], cited: EvidenceIndex, n_sampled: int = N_FRAMES) -> None:
+    def __init__(
+        self,
+        tracks: dict,
+        entities: dict[str, list[str]],
+        videos: dict[str, str],
+        cited: EvidenceIndex,
+        n_sampled: int = N_FRAMES,
+    ) -> None:
         self.tracks = tracks
         self.entities = entities
         self.videos = videos
@@ -212,9 +239,18 @@ class EntityTrackIndex:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("outputs", nargs="+", type=Path, help="harness per-item jsonl files of chain models (plain runs); entities are pooled per video")
-    ap.add_argument("--pack", type=Path, required=True, help="NExT-QA pack with frames/<video>/fNN.jpg")
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    ap.add_argument(
+        "outputs",
+        nargs="+",
+        type=Path,
+        help="harness per-item jsonl files of chain models (plain runs); entities are pooled per video",
+    )
+    ap.add_argument(
+        "--pack", type=Path, required=True, help="NExT-QA pack with frames/<video>/fNN.jpg"
+    )
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--detector", default="IDEA-Research/grounding-dino-tiny")
     ap.add_argument("--threshold", type=float, default=0.35)
@@ -227,7 +263,9 @@ def main() -> None:
     print(f"{len(phrases)} videos, {n_calls} (video, phrase) pairs")
     tracks = build_tracks(phrases, dino_detect_all(a.pack, a.detector, a.threshold))
     summ = track_summary(tracks)
-    summ.update({"detector": a.detector, "threshold": a.threshold, "sources": [str(p) for p in a.outputs]})
+    summ.update(
+        {"detector": a.detector, "threshold": a.threshold, "sources": [str(p) for p in a.outputs]}
+    )
     tracks["_summary"] = summ
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(tracks))

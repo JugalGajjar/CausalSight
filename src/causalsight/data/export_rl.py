@@ -24,7 +24,13 @@ from causalsight.eval.benchmarks.answers import LETTERS, normalize_short
 from causalsight.eval.benchmarks.clevrer import DESCRIPTIVE_PROMPT, MC_PROMPT, find_video
 from causalsight.train.format import format_chain
 
-PROBLEM_TYPE = {"count": "numerical", "exist": "free-form", "query_color": "free-form", "query_material": "free-form", "query_shape": "free-form"}
+PROBLEM_TYPE = {
+    "count": "numerical",
+    "exist": "free-form",
+    "query_color": "free-form",
+    "query_material": "free-form",
+    "query_shape": "free-form",
+}
 
 
 def question_record(root: Path, split: str, scene_index: int, q: dict) -> dict:
@@ -41,12 +47,24 @@ def question_record(root: Path, split: str, scene_index: int, q: dict) -> dict:
     if t == "descriptive":
         st = q.get("question_subtype", "query_color")
         gold = normalize_short(str(q["answer"]))
-        rec.update(problem=DESCRIPTIVE_PROMPT[st].format(q=q["question"]), problem_type=PROBLEM_TYPE[st], options=[], gold=gold, solution=f"<answer>{gold}</answer>")
+        rec.update(
+            problem=DESCRIPTIVE_PROMPT[st].format(q=q["question"]),
+            problem_type=PROBLEM_TYPE[st],
+            options=[],
+            gold=gold,
+            solution=f"<answer>{gold}</answer>",
+        )
     else:
         opts = [c["choice"] for c in q["choices"]]
         gold = "".join(LETTERS[i] for i, c in enumerate(q["choices"]) if c["answer"] == "correct")
         opts_txt = "\n".join(f"{LETTERS[i]}. {o}" for i, o in enumerate(opts))
-        rec.update(problem=MC_PROMPT.format(q=q["question"], opts=opts_txt), problem_type="multiple choice", options=[f"{LETTERS[i]}. {o}" for i, o in enumerate(opts)], gold=gold, solution=f"<answer>{gold}</answer>")
+        rec.update(
+            problem=MC_PROMPT.format(q=q["question"], opts=opts_txt),
+            problem_type="multiple choice",
+            options=[f"{LETTERS[i]}. {o}" for i, o in enumerate(opts)],
+            gold=gold,
+            solution=f"<answer>{gold}</answer>",
+        )
     return rec
 
 
@@ -68,7 +86,9 @@ def export_rl(root: Path, split: str, out: Path, n_videos: int | None) -> Counte
 def export_sft(root: Path, split: str, chains: Path, out: Path, limit: int | None) -> Counter:
     """Descriptive chains map 1:1 to questions. MC chains are per option; the SFT record asks about that
     single option ("Is option X correct?") so the chain's yes/no final answer matches the prompt."""
-    videos = {v["scene_index"]: v for v in json.loads((root / "questions" / f"{split}.json").read_text())}
+    videos = {
+        v["scene_index"]: v for v in json.loads((root / "questions" / f"{split}.json").read_text())
+    }
     stats = Counter()
     out.parent.mkdir(parents=True, exist_ok=True)
     n = 0
@@ -84,7 +104,8 @@ def export_sft(root: Path, split: str, chains: Path, out: Path, limit: int | Non
                 letter = LETTERS[c.meta["choice_id"]]
                 prompt = f"{q['question']}\nOption {letter}: {c.meta['choice']}\nIs this option correct? Answer yes or no."
             rec = {
-                "problem_id": base["problem_id"] + (f"_{c.meta['choice_id']}" if "choice_id" in c.meta else ""),
+                "problem_id": base["problem_id"]
+                + (f"_{c.meta['choice_id']}" if "choice_id" in c.meta else ""),
                 "data_type": "video",
                 "path": base["path"],
                 "question_type": c.question_type,
@@ -114,7 +135,12 @@ def attach_chains(rl_subset: Path, chains: Path, out: Path) -> Counter:
             c = json.loads(line)
             key = f"{c['meta']['scene_index']}_{c['meta']['question_id']}"
             if key in want:
-                slim = {"question_type": c["question_type"], "final_answer": c["final_answer"], "choice_id": c["meta"].get("choice_id"), "triplets": c["triplets"]}
+                slim = {
+                    "question_type": c["question_type"],
+                    "final_answer": c["final_answer"],
+                    "choice_id": c["meta"].get("choice_id"),
+                    "triplets": c["triplets"],
+                }
                 want[key].append(slim)
     stats = Counter()
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -147,7 +173,16 @@ def to_options(rl_chains: Path, out: Path, per_type: int, seed: int) -> Counter:
             letter, choice = opt.split(". ", 1)
             gold = "yes" if letter in r["gold"] else "no"
             chains = [c for c in r["gt_chains"] if c.get("choice_id") == i]
-            rec = {**r, "problem_id": f"{r['problem_id']}_{i}", "problem": OPTION_PROMPT.format(q=q_text, letter=letter, choice=choice), "problem_type": "free-form", "options": [], "gold": gold, "solution": f"<answer>{gold}</answer>", "gt_chains": chains}
+            rec = {
+                **r,
+                "problem_id": f"{r['problem_id']}_{i}",
+                "problem": OPTION_PROMPT.format(q=q_text, letter=letter, choice=choice),
+                "problem_type": "free-form",
+                "options": [],
+                "gold": gold,
+                "solution": f"<answer>{gold}</answer>",
+                "gt_chains": chains,
+            }
             pool.setdefault((r["question_type"], gold), []).append(rec)
     out_recs = []
     for (t, g), rs in sorted(pool.items()):

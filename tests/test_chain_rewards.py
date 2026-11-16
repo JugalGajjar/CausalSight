@@ -1,9 +1,26 @@
 from causalsight.train.rewards.chain_rewards import grounding, process
 
-GT = {"question_type": "descriptive", "final_answer": "blue", "choice_id": None, "triplets": [
-    {"question": "Which object is the gray sphere?", "answer": "the gray rubber sphere", "depends_on": [], "role": "resolve", "evidence": {"t_start": 0, "t_end": 0, "box": [0.3, 0.6, 0.5, 0.8]}},
-    {"question": "Which collision involving the gray sphere happens?", "answer": "the collision between the blue rubber sphere and the gray rubber sphere at frame 19", "depends_on": [0], "role": "resolve", "evidence": {"t_start": 17, "t_end": 21, "box": [0.0, 0.4, 0.2, 0.6]}},
-]}
+GT = {
+    "question_type": "descriptive",
+    "final_answer": "blue",
+    "choice_id": None,
+    "triplets": [
+        {
+            "question": "Which object is the gray sphere?",
+            "answer": "the gray rubber sphere",
+            "depends_on": [],
+            "role": "resolve",
+            "evidence": {"t_start": 0, "t_end": 0, "box": [0.3, 0.6, 0.5, 0.8]},
+        },
+        {
+            "question": "Which collision involving the gray sphere happens?",
+            "answer": "the collision between the blue rubber sphere and the gray rubber sphere at frame 19",
+            "depends_on": [0],
+            "role": "resolve",
+            "evidence": {"t_start": 17, "t_end": 21, "box": [0.0, 0.4, 0.2, 0.6]},
+        },
+    ],
+}
 REC = {"problem_type": "free-form", "gt_chains": [GT]}
 GOOD = "<think>\n[1] Q: Which object is the gray sphere? | A: the gray rubber sphere | E: t=0-0 box=(0.3,0.6,0.5,0.8) | deps=\n[2] Q: Which collision? | A: the collision between the blue rubber sphere and the gray rubber sphere at frame 19 | E: t=17-21 box=(0.0,0.4,0.2,0.6) | deps=1\n</think>\n<answer>blue</answer>"
 REVERSED = "<think>\n[1] Q: Which collision? | A: the collision between the blue rubber sphere and the gray rubber sphere at frame 19 | E: t=17-21 box=(0.0,0.4,0.2,0.6) | deps=\n[2] Q: Which object is the gray sphere? | A: the gray rubber sphere | E: t=0-0 box=(0.3,0.6,0.5,0.8) | deps=\n</think>\n<answer>blue</answer>"

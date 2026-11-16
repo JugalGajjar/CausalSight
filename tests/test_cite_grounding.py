@@ -1,4 +1,3 @@
-
 from causalsight.eval.cite_grounding import entity_of, frame_of, score, steps_of
 
 
@@ -6,7 +5,12 @@ def test_entity_and_frame():
     assert entity_of("Where is 2: white dog: the white dog?") == "the white dog"
     assert entity_of("Where is the man in the beige vest?") == "the man in the beige vest"
     assert entity_of("Which object is the cube?") is None
-    assert frame_of(13, 21) == 2 and frame_of(126, 126) == 15 and frame_of(0, 0) == 0 and frame_of(38, 46) == 5
+    assert (
+        frame_of(13, 21) == 2
+        and frame_of(126, 126) == 15
+        and frame_of(0, 0) == 0
+        and frame_of(38, 46) == 5
+    )
 
 
 RAW = (
@@ -32,7 +36,12 @@ def test_score_cached_and_controlled():
 
     rows = [
         {"id": "v1_1_0", "frames_key": "v1", "question_type": "causal", "raw": RAW},
-        {"id": "v1_1_1", "frames_key": "v1", "question_type": "causal", "raw": RAW},  # per-option repeat: no new calls
+        {
+            "id": "v1_1_1",
+            "frames_key": "v1",
+            "question_type": "causal",
+            "raw": RAW,
+        },  # per-option repeat: no new calls
     ]
     rep = score(rows, detect, seed=0)
     assert len(calls) == 2 and rep["ALL"]["unique_detector_calls"] == 2

@@ -30,7 +30,14 @@ OPTION_PROMPT = "{q}\nOption {letter}: {choice}\nIs this option correct? Answer 
 
 def find_video(root: Path, split: str, scene_index: int) -> Path:
     lo = (scene_index // 1000) * 1000
-    return root / "videos" / split / f"video_{split}" / f"video_{lo:05d}-{lo + 1000:05d}" / f"video_{scene_index:05d}.mp4"
+    return (
+        root
+        / "videos"
+        / split
+        / f"video_{split}"
+        / f"video_{lo:05d}-{lo + 1000:05d}"
+        / f"video_{scene_index:05d}.mp4"
+    )
 
 
 class ClevrerBenchmark(Benchmark):
@@ -52,16 +59,43 @@ class ClevrerBenchmark(Benchmark):
                 qid = f"{v['scene_index']}_{q['question_id']}"
                 if t == "descriptive":
                     st = q.get("question_subtype", "query_color")
-                    yield Item(qid, t, vp, DESCRIPTIVE_PROMPT.get(st, DESCRIPTIVE_PROMPT["query_color"]).format(q=q["question"]), normalize_short(str(q["answer"])), meta={"subtype": st})
+                    yield Item(
+                        qid,
+                        t,
+                        vp,
+                        DESCRIPTIVE_PROMPT.get(st, DESCRIPTIVE_PROMPT["query_color"]).format(
+                            q=q["question"]
+                        ),
+                        normalize_short(str(q["answer"])),
+                        meta={"subtype": st},
+                    )
                 elif self.mc_mode == "option":
                     for i, c in enumerate(q["choices"]):
                         gold = "yes" if c["answer"] == "correct" else "no"
-                        yield Item(f"{qid}_{i}", t, vp, OPTION_PROMPT.format(q=q["question"], letter=LETTERS[i], choice=c["choice"]), gold, meta={"qid": qid, "option": i, "per_option": True})
+                        yield Item(
+                            f"{qid}_{i}",
+                            t,
+                            vp,
+                            OPTION_PROMPT.format(
+                                q=q["question"], letter=LETTERS[i], choice=c["choice"]
+                            ),
+                            gold,
+                            meta={"qid": qid, "option": i, "per_option": True},
+                        )
                 else:
                     opts = [c["choice"] for c in q["choices"]]
-                    gold = "".join(LETTERS[i] for i, c in enumerate(q["choices"]) if c["answer"] == "correct")
+                    gold = "".join(
+                        LETTERS[i] for i, c in enumerate(q["choices"]) if c["answer"] == "correct"
+                    )
                     opts_txt = "\n".join(f"{LETTERS[i]}. {o}" for i, o in enumerate(opts))
-                    yield Item(qid, t, vp, MC_PROMPT.format(q=q["question"], opts=opts_txt), gold, options=opts)
+                    yield Item(
+                        qid,
+                        t,
+                        vp,
+                        MC_PROMPT.format(q=q["question"], opts=opts_txt),
+                        gold,
+                        options=opts,
+                    )
                 n += 1
                 if limit and n >= limit:
                     return
@@ -69,12 +103,19 @@ class ClevrerBenchmark(Benchmark):
     def score(self, item: Item, prediction: str) -> dict:
         if item.question_type == "descriptive" or item.meta.get("per_option"):
             pred = normalize_short(prediction)
-            if (item.meta.get("subtype") == "exist" or item.meta.get("per_option")) and pred.isdigit():
+            if (
+                item.meta.get("subtype") == "exist" or item.meta.get("per_option")
+            ) and pred.isdigit():
                 pred = "no" if pred == "0" else "yes"
             return {"pred": pred, "correct": int(pred == item.gold)}
         pred = parse_letters(prediction, len(item.options))
         per_option = [int((L in pred) == (L in item.gold)) for L in LETTERS[: len(item.options)]]
-        return {"pred": pred, "correct": int(pred == item.gold), "option_correct": sum(per_option), "option_total": len(per_option)}
+        return {
+            "pred": pred,
+            "correct": int(pred == item.gold),
+            "option_correct": sum(per_option),
+            "option_total": len(per_option),
+        }
 
     @staticmethod
     def summarize(rows: list[dict]) -> dict:
@@ -88,14 +129,24 @@ class ClevrerBenchmark(Benchmark):
                 by_q: dict[str, list[int]] = {}
                 for r in rs:
                     by_q.setdefault(r["qid"], []).append(r["correct"])
-                d = {"n": len(by_q), "n_options": len(rs), "per_option": sum(r["correct"] for r in rs) / len(rs), "per_question": sum(all(v) for v in by_q.values()) / len(by_q)}
+                d = {
+                    "n": len(by_q),
+                    "n_options": len(rs),
+                    "per_option": sum(r["correct"] for r in rs) / len(rs),
+                    "per_question": sum(all(v) for v in by_q.values()) / len(by_q),
+                }
             else:
                 d = {"n": len(rs), "per_question": sum(r["correct"] for r in rs) / len(rs)}
                 if t in MC_TYPES:
-                    d["per_option"] = sum(r["option_correct"] for r in rs) / sum(r["option_total"] for r in rs)
+                    d["per_option"] = sum(r["option_correct"] for r in rs) / sum(
+                        r["option_total"] for r in rs
+                    )
             out[t] = d
         inf = [t for t in MC_TYPES if t in out]
         if inf:
             tot = sum(out[t]["n"] for t in inf)
-            out["inferential(per_question)"] = {"n": tot, "per_question": sum(out[t]["per_question"] * out[t]["n"] for t in inf) / tot}
+            out["inferential(per_question)"] = {
+                "n": tot,
+                "per_question": sum(out[t]["per_question"] * out[t]["n"] for t in inf) / tot,
+            }
         return out

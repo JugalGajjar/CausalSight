@@ -17,7 +17,9 @@ def load_backend(model: str, **kw) -> VLMBackend:
     from transformers import AutoConfig
 
     adapter = Path(model) / "adapter_config.json"
-    base_id = json.loads(adapter.read_text())["base_model_name_or_path"] if adapter.exists() else model
+    base_id = (
+        json.loads(adapter.read_text())["base_model_name_or_path"] if adapter.exists() else model
+    )
     model_type = AutoConfig.from_pretrained(base_id).model_type
     if model_type == "internvl":
         from causalsight.models.internvl import InternVLBackend

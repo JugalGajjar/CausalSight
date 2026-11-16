@@ -62,7 +62,9 @@ class ChainBuilder:
                 return None, "executor_disagrees"
         else:
             final = "yes" if choice["answer"] == "correct" else "no"
-            if exec_answer not in (UNKNOWN,) and {"yes": "yes", "no": "no"}.get(exec_answer) not in (final, None):
+            if exec_answer not in (UNKNOWN,) and {"yes": "yes", "no": "no"}.get(
+                exec_answer
+            ) not in (final, None):
                 return None, "executor_disagrees"
 
         landmarks = self._select_landmarks(ex.steps)
@@ -80,14 +82,20 @@ class ChainBuilder:
             q, a, ev = made
             # the program often re-derives the same entity ("the gray sphere" / "the gray object");
             # one triplet per resolved object or event, keyed by the entity, not the phrasing
-            key = ("entity", st.out.kind, repr(st.out.data)) if landmarks[si] == "resolve" else ("qa", q, a)
+            key = (
+                ("entity", st.out.kind, repr(st.out.data))
+                if landmarks[si] == "resolve"
+                else ("qa", q, a)
+            )
             if key in seen_qa:
                 step_to_triplet[si] = seen_qa[key]
                 continue
             deps = tuple(sorted(self._landmark_deps(ex.steps, si, step_to_triplet)))
             step_to_triplet[si] = len(triplets)
             seen_qa[key] = len(triplets)
-            triplets.append(Triplet(question=q, answer=a, evidence=ev, depends_on=deps, role=landmarks[si]))
+            triplets.append(
+                Triplet(question=q, answer=a, evidence=ev, depends_on=deps, role=landmarks[si])
+            )
 
         meta = {
             "scene_index": self.s.scene_index,
@@ -97,7 +105,13 @@ class ChainBuilder:
             "executor_answer": exec_answer,
         }
         if choice is not None:
-            meta.update({"choice_id": choice["choice_id"], "choice": choice["choice"], "choice_program": choice["program"]})
+            meta.update(
+                {
+                    "choice_id": choice["choice_id"],
+                    "choice": choice["choice"],
+                    "choice_program": choice["program"],
+                }
+            )
         chain = TripletChain(
             video_id=self.s.video_filename,
             question=question["question"],
@@ -114,7 +128,12 @@ class ChainBuilder:
     def _select_landmarks(self, steps: list[Step]) -> dict[int, str]:
         marks: dict[int, str] = {}
         for st in steps:
-            if st.op in ("unique", "filter_order", "get_col_partner", "get_object") and st.out.kind in ("object", "event"):
+            if st.op in (
+                "unique",
+                "filter_order",
+                "get_col_partner",
+                "get_object",
+            ) and st.out.kind in ("object", "event"):
                 src = st.inputs[0]
                 if st.out.kind == "event" and st.out.data.frame < 0:
                     marks[st.idx] = "observe"  # possible collision from all_events
@@ -128,7 +147,9 @@ class ChainBuilder:
                 marks[st.idx] = "enumerate"
         return dict(sorted(marks.items()))
 
-    def _landmark_deps(self, steps: list[Step], si: int, step_to_triplet: dict[int, int]) -> set[int]:
+    def _landmark_deps(
+        self, steps: list[Step], si: int, step_to_triplet: dict[int, int]
+    ) -> set[int]:
         out: set[int] = set()
         seen: set[int] = set()
         stack = list(steps[si].input_steps)
@@ -145,7 +166,9 @@ class ChainBuilder:
 
     # ---------------------------------------------------------------- triplet construction
 
-    def _make_triplet(self, ex: TracedExecutor, st: Step, kind: str) -> tuple[str, str, Evidence] | None:
+    def _make_triplet(
+        self, ex: TracedExecutor, st: Step, kind: str
+    ) -> tuple[str, str, Evidence] | None:
         v = st.out
         if kind == "resolve" and v.kind == "object":
             return self._resolve_object(ex, st)
@@ -189,7 +212,11 @@ class ChainBuilder:
     def _best_frame(self, obj: int, candidates: list[int] | None = None) -> int:
         """Frame with the largest detected box (objects sliding in at the edge give slivers)."""
         attrs = self.s.attrs[obj]
-        cands = candidates if candidates is not None else [f for f in range(0, self.p.n_frames, 3) if self.s.is_visible(obj, f)]
+        cands = (
+            candidates
+            if candidates is not None
+            else [f for f in range(0, self.p.n_frames, 3) if self.s.is_visible(obj, f)]
+        )
         best_f, best_area = (cands[0] if cands else 0), -1.0
         for f in cands:
             hit = self.p.box(attrs, f, 0)
@@ -220,14 +247,18 @@ class ChainBuilder:
         """Earliest frame where the most of `objs` are visible and detected."""
         best_f, best_n = 0, -1
         for f in range(0, self.p.n_frames, 4):
-            n = sum(1 for o in objs if self.s.is_visible(o, f) and self.p.box(self.s.attrs[o], f, 0))
+            n = sum(
+                1 for o in objs if self.s.is_visible(o, f) and self.p.box(self.s.attrs[o], f, 0)
+            )
             if n > best_n:
                 best_f, best_n = f, n
             if n == len(objs):
                 break
         return best_f
 
-    def _objects_evidence(self, objs: list[int], frame: int, span: tuple[int, int] | None = None) -> Evidence | None:
+    def _objects_evidence(
+        self, objs: list[int], frame: int, span: tuple[int, int] | None = None
+    ) -> Evidence | None:
         attrs = [self.s.attrs[o] for o in objs]
         ev = evidence_for_objects(self.p, attrs, frame, span, self.tol)
         if ev is None and self.tol < 10:
@@ -256,7 +287,11 @@ class ChainBuilder:
         src = st.inputs[0]
         quals = src.quals if st.op == "unique" else st.out.quals
         phrase = self._event_phrase(quals, singular=True)
-        q = f"What is the {phrase}?" if phrase.split(" ")[0] in ("first", "second", "last") else f"Which {phrase} happens in the video?"
+        q = (
+            f"What is the {phrase}?"
+            if phrase.split(" ")[0] in ("first", "second", "last")
+            else f"Which {phrase} happens in the video?"
+        )
         a = ex.describe_event(e)
         ev = self._event_evidence(e)
         return (q, a, ev) if ev else None
@@ -272,12 +307,14 @@ class ChainBuilder:
         if singular:
             for k, v in SINGULAR.items():
                 if head.startswith(k):
-                    head = v + head[len(k):]
+                    head = v + head[len(k) :]
                     break
         phrase = " ".join([head] + parts[1:])
         return f"{order} {phrase}" if order else phrase
 
-    def _observe_possible_collision(self, ex: TracedExecutor, st: Step) -> tuple[str, str, Evidence] | None:
+    def _observe_possible_collision(
+        self, ex: TracedExecutor, st: Step
+    ) -> tuple[str, str, Evidence] | None:
         e: Event = st.out.data
         a_id, b_id = e.objects
         d = self.s.describe
@@ -304,7 +341,15 @@ class ChainBuilder:
         v = st.out
         objs: list[int] = v.data
         a_ = v.attrs
-        base = " ".join(p for p in (a_.get("color"), a_.get("material"), (a_.get("shape") + "s") if a_.get("shape") else "objects") if p)
+        base = " ".join(
+            p
+            for p in (
+                a_.get("color"),
+                a_.get("material"),
+                (a_.get("shape") + "s") if a_.get("shape") else "objects",
+            )
+            if p
+        )
         q = f"Which {base} are {v.quals[0]}?" if v.quals else f"Which {base} are there?"
         a = ", ".join(self.s.describe(o) for o in objs) if objs else "none"
         if not objs:
@@ -332,7 +377,12 @@ class ChainBuilder:
             boxes.append(ev)
         t0 = min(b.t_start for b in boxes)
         t1 = max(b.t_end for b in boxes)
-        box = (min(b.box[0] for b in boxes), min(b.box[1] for b in boxes), max(b.box[2] for b in boxes), max(b.box[3] for b in boxes))
+        box = (
+            min(b.box[0] for b in boxes),
+            min(b.box[1] for b in boxes),
+            max(b.box[2] for b in boxes),
+            max(b.box[3] for b in boxes),
+        )
         return q, a, Evidence(t_start=t0, t_end=t1, box=box)
 
 
@@ -341,7 +391,14 @@ class ChainBuilder:
 
 def find_annotation(root: Path, split: str, scene_index: int) -> Path:
     lo = (scene_index // 1000) * 1000
-    return root / "annotations" / split / f"annotation_{split}" / f"annotation_{lo:05d}-{lo + 1000:05d}" / f"annotation_{scene_index:05d}.json"
+    return (
+        root
+        / "annotations"
+        / split
+        / f"annotation_{split}"
+        / f"annotation_{lo:05d}-{lo + 1000:05d}"
+        / f"annotation_{scene_index:05d}.json"
+    )
 
 
 def generate(root: Path, split: str, n_videos: int | None, out: Path, types: set[str]) -> dict:
@@ -354,7 +411,9 @@ def generate(root: Path, split: str, n_videos: int | None, out: Path, types: set
     with out.open("w") as f:
         for v in videos:
             scene = Scene.from_annotation(find_annotation(root, split, v["scene_index"]))
-            props = ProposalIndex.load(root / "derender_proposals" / f"proposal_{v['scene_index']:05d}.json")
+            props = ProposalIndex.load(
+                root / "derender_proposals" / f"proposal_{v['scene_index']:05d}.json"
+            )
             b = ChainBuilder(scene, props)
             for q in v["questions"]:
                 t = q["question_type"]

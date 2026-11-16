@@ -30,7 +30,17 @@ def _jaccard(a: str, b: str) -> float:
 
 
 def _gt_chain(d: dict) -> TripletChain:
-    return TripletChain.from_json(__import__("json").dumps({"video_id": "", "question": "", "final_answer": d["final_answer"], "question_type": d.get("question_type"), "triplets": d["triplets"]}))
+    return TripletChain.from_json(
+        __import__("json").dumps(
+            {
+                "video_id": "",
+                "question": "",
+                "final_answer": d["final_answer"],
+                "question_type": d.get("question_type"),
+                "triplets": d["triplets"],
+            }
+        )
+    )
 
 
 def gt_regions(rec: dict) -> list[Evidence]:
@@ -48,7 +58,9 @@ def grounding(text: str, rec: dict) -> float:
     regs = gt_regions(rec)
     if p.chain is None or not regs:
         return 0.0
-    return sum(max(t.evidence.st_iou(g) for g in regs) for t in p.chain.triplets) / len(p.chain.triplets)
+    return sum(max(t.evidence.st_iou(g) for g in regs) for t in p.chain.triplets) / len(
+        p.chain.triplets
+    )
 
 
 def match(pred: TripletChain, ref: TripletChain) -> tuple[dict[int, int], float]:

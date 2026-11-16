@@ -28,7 +28,13 @@ from pathlib import Path
 N_BOOT = 2000
 
 
-def _ci(values_fn, tids: list[str], rng: random.Random, n_boot: int = N_BOOT, cluster: dict[str, str] | None = None) -> tuple[float, float]:
+def _ci(
+    values_fn,
+    tids: list[str],
+    rng: random.Random,
+    n_boot: int = N_BOOT,
+    cluster: dict[str, str] | None = None,
+) -> tuple[float, float]:
     """Paired bootstrap with 95% percentile interval. Items are resampled in clusters (one cluster per
     question, so the per-option items of one question move together), the statistic is recomputed on
     the resampled items, and the 2.5/97.5 percentiles are taken. Without `cluster` every item is its
@@ -55,30 +61,61 @@ def load(path: Path) -> dict[str, dict]:
 
 
 def report(dir_: Path, tag: str) -> dict:
-    runs = {k: load(dir_ / f"{tag}_{k}.jsonl") for k in ("plain", "blind", "mask_evidence", "mask_random", "mask_track", "mask_track_random", "mask_cite", "mask_cite_random", "mask_cite_track", "mask_cite_track_random") if (dir_ / f"{tag}_{k}.jsonl").exists()}
+    runs = {
+        k: load(dir_ / f"{tag}_{k}.jsonl")
+        for k in (
+            "plain",
+            "blind",
+            "mask_evidence",
+            "mask_random",
+            "mask_track",
+            "mask_track_random",
+            "mask_cite",
+            "mask_cite_random",
+            "mask_cite_track",
+            "mask_cite_track_random",
+        )
+        if (dir_ / f"{tag}_{k}.jsonl").exists()
+    }
     if "plain" not in runs:
         raise SystemExit(f"missing {tag}_plain.jsonl in {dir_}")
     # track runs skip items without a same-size control; main stats use the non-track intersection,
     # track stats use the sub-intersection that includes the track runs
     main_keys = [k for k in runs if not k.startswith(("mask_track", "mask_cite"))]
     ids = set.intersection(*(set(runs[k]) for k in main_keys))
-    track_ids = set.intersection(ids, *(set(runs[k]) for k in runs if k.startswith("mask_track"))) if any(k.startswith("mask_track") for k in runs) else set()
+    track_ids = (
+        set.intersection(ids, *(set(runs[k]) for k in runs if k.startswith("mask_track")))
+        if any(k.startswith("mask_track") for k in runs)
+        else set()
+    )
     # cite runs cover only items whose plain chain cited a localizable region
-    cite_ids = set.intersection(ids, set(runs["mask_cite"]), set(runs["mask_cite_random"])) if "mask_cite" in runs and "mask_cite_random" in runs else set()
+    cite_ids = (
+        set.intersection(ids, set(runs["mask_cite"]), set(runs["mask_cite_random"]))
+        if "mask_cite" in runs and "mask_cite_random" in runs
+        else set()
+    )
     # entity-track runs (real video) may cover only the items correct under the plain input: their flip rates
     # are over correct items anyway, so the subset changes nothing
-    ctrack_ids = set.intersection(ids, set(runs["mask_cite_track"]), set(runs["mask_cite_track_random"])) if "mask_cite_track" in runs and "mask_cite_track_random" in runs else set()
+    ctrack_ids = (
+        set.intersection(ids, set(runs["mask_cite_track"]), set(runs["mask_cite_track_random"]))
+        if "mask_cite_track" in runs and "mask_cite_track_random" in runs
+        else set()
+    )
     by_type: dict[str, list[str]] = defaultdict(list)
     for i in sorted(ids):
         by_type[runs["plain"][i]["question_type"]].append(i)
     by_type["ALL"] = sorted(ids)
     # bootstrap clusters: all per-option items of one question resample together
-    cluster = {i: str(runs["plain"][i].get("qid") or runs["plain"][i].get("qset") or i) for i in ids}
+    cluster = {
+        i: str(runs["plain"][i].get("qid") or runs["plain"][i].get("qset") or i) for i in ids
+    }
     out: dict[str, dict] = {}
     rng = random.Random(0)
 
     def blind_gap(ids_: list[str]) -> float:
-        return sum(runs["plain"][i]["correct"] - runs["blind"][i]["correct"] for i in ids_) / len(ids_)
+        return sum(runs["plain"][i]["correct"] - runs["blind"][i]["correct"] for i in ids_) / len(
+            ids_
+        )
 
     def flip(k: str, ids_: list[str]) -> float | None:
         cp = [i for i in ids_ if runs["plain"][i]["correct"]]
@@ -149,13 +186,29 @@ def main() -> None:
     ap.add_argument("--tag", required=True)
     args = ap.parse_args()
     rep = report(args.dir, args.tag)
-    cols = ["n", "acc_plain", "acc_blind", "blind_gap", "blind_gap_ci", "flip_evidence", "flip_random", "es_gap", "es_gap_ci"]
+    cols = [
+        "n",
+        "acc_plain",
+        "acc_blind",
+        "blind_gap",
+        "blind_gap_ci",
+        "flip_evidence",
+        "flip_random",
+        "es_gap",
+        "es_gap_ci",
+    ]
     if any("track_gap" in r for r in rep.values()):
         cols += ["n_track", "flip_track", "flip_track_random", "track_gap", "track_gap_ci"]
     if any("cite_gap" in r for r in rep.values()):
         cols += ["n_cite", "flip_cite", "flip_cite_random", "cite_gap", "cite_gap_ci"]
     if any("cite_track_gap" in r for r in rep.values()):
-        cols += ["n_cite_track", "flip_cite_track", "flip_cite_track_random", "cite_track_gap", "cite_track_gap_ci"]
+        cols += [
+            "n_cite_track",
+            "flip_cite_track",
+            "flip_cite_track_random",
+            "cite_track_gap",
+            "cite_track_gap_ci",
+        ]
 
     def fmt(v) -> str:
         if isinstance(v, tuple):
@@ -168,8 +221,15 @@ def main() -> None:
         print(f"{t:16s}" + "".join(f"{fmt(row.get(c)):>{width[c]}s}" for c in cols))
     (args.dir / f"{args.tag}_faithfulness.json").write_text(json.dumps(rep, indent=2))
     (args.dir / f"{args.tag}_faithfulness.md").write_text(
-        "| type | " + " | ".join(cols) + " |\n|" + "---|" * (len(cols) + 1) + "\n"
-        + "\n".join("| " + t + " | " + " | ".join(fmt(row.get(c)) for c in cols) + " |" for t, row in rep.items())
+        "| type | "
+        + " | ".join(cols)
+        + " |\n|"
+        + "---|" * (len(cols) + 1)
+        + "\n"
+        + "\n".join(
+            "| " + t + " | " + " | ".join(fmt(row.get(c)) for c in cols) + " |"
+            for t, row in rep.items()
+        )
         + "\n"
     )
 

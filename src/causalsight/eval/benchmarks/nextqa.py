@@ -16,8 +16,19 @@ from pathlib import Path
 from causalsight.eval.benchmarks import Benchmark, Item
 from causalsight.eval.benchmarks.answers import LETTERS, normalize_short, parse_letters
 
-FAMILY = {"CW": "causal", "CH": "causal", "TN": "temporal", "TC": "temporal", "TP": "temporal", "DC": "descriptive", "DL": "descriptive", "DO": "descriptive"}
-MC_PROMPT = "{q}?\n{opts}\nExactly one option is correct. Answer with the letter of the correct option."
+FAMILY = {
+    "CW": "causal",
+    "CH": "causal",
+    "TN": "temporal",
+    "TC": "temporal",
+    "TP": "temporal",
+    "DC": "descriptive",
+    "DL": "descriptive",
+    "DO": "descriptive",
+}
+MC_PROMPT = (
+    "{q}?\n{opts}\nExactly one option is correct. Answer with the letter of the correct option."
+)
 OPTION_PROMPT = "{q}?\nOption {letter}: {choice}\nIs this option correct? Answer yes or no."
 
 
@@ -56,10 +67,25 @@ class NextQABenchmark(Benchmark):
             meta = {"qid": key, "type_code": row["type"], "frames_key": row["video"]}
             if self.mc_mode == "option":
                 for i, o in enumerate(opts):
-                    yield Item(f"{key}_{i}", fam, vp, OPTION_PROMPT.format(q=row["question"], letter=LETTERS[i], choice=o), "yes" if LETTERS[i] == gold else "no", meta={**meta, "qset": key, "option": i, "per_option": True})
+                    yield Item(
+                        f"{key}_{i}",
+                        fam,
+                        vp,
+                        OPTION_PROMPT.format(q=row["question"], letter=LETTERS[i], choice=o),
+                        "yes" if LETTERS[i] == gold else "no",
+                        meta={**meta, "qset": key, "option": i, "per_option": True},
+                    )
             else:
                 opts_txt = "\n".join(f"{LETTERS[i]}. {o}" for i, o in enumerate(opts))
-                yield Item(key, fam, vp, MC_PROMPT.format(q=row["question"], opts=opts_txt), gold, options=opts, meta=meta)
+                yield Item(
+                    key,
+                    fam,
+                    vp,
+                    MC_PROMPT.format(q=row["question"], opts=opts_txt),
+                    gold,
+                    options=opts,
+                    meta=meta,
+                )
             n += 1
             if limit and n >= limit:
                 return

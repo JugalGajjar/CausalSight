@@ -20,7 +20,9 @@ from pathlib import Path
 from causalsight.eval.benchmarks import Benchmark, Item
 from causalsight.eval.benchmarks.answers import LETTERS, normalize_short, parse_letters
 
-MC_PROMPT = "{q}\n{opts}\nExactly one option is correct. Answer with the letter of the correct option."
+MC_PROMPT = (
+    "{q}\n{opts}\nExactly one option is correct. Answer with the letter of the correct option."
+)
 OPTION_PROMPT = "{q}\nOption {letter}: {choice}\nIs this option correct? Answer yes or no."
 
 
@@ -53,10 +55,25 @@ class CausalVQABenchmark(Benchmark):
                     meta = {"qid": row["qid"], "set": k, "difficulty": row.get("difficulty")}
                     if self.mc_mode == "option":
                         for i, o in enumerate(opts):
-                            yield Item(f"{qid}_{i}", row["type"].lower(), vp, OPTION_PROMPT.format(q=q, letter=LETTERS[i], choice=o), "yes" if LETTERS[i] == gold else "no", meta={**meta, "qset": qid, "option": i, "per_option": True})
+                            yield Item(
+                                f"{qid}_{i}",
+                                row["type"].lower(),
+                                vp,
+                                OPTION_PROMPT.format(q=q, letter=LETTERS[i], choice=o),
+                                "yes" if LETTERS[i] == gold else "no",
+                                meta={**meta, "qset": qid, "option": i, "per_option": True},
+                            )
                     else:
                         opts_txt = "\n".join(f"{LETTERS[i]}. {o}" for i, o in enumerate(opts))
-                        yield Item(qid, row["type"].lower(), vp, MC_PROMPT.format(q=q, opts=opts_txt), gold, options=opts, meta=meta)
+                        yield Item(
+                            qid,
+                            row["type"].lower(),
+                            vp,
+                            MC_PROMPT.format(q=q, opts=opts_txt),
+                            gold,
+                            options=opts,
+                            meta=meta,
+                        )
                     n += 1
                     if limit and n >= limit:
                         return
@@ -88,7 +105,12 @@ class CausalVQABenchmark(Benchmark):
         for t in sorted(set(types.values())) + ["ALL"]:
             qs = [q for q in by_q if t == "ALL" or types[q] == t]
             sets = [v for q in qs for v in by_q[q]]
-            d = {"n_questions": len(qs), "n_sets": len(sets), "set_acc": sum(sets) / max(1, len(sets)), "paired_acc": sum(all(by_q[q]) for q in qs) / max(1, len(qs))}
+            d = {
+                "n_questions": len(qs),
+                "n_sets": len(sets),
+                "set_acc": sum(sets) / max(1, len(sets)),
+                "paired_acc": sum(all(by_q[q]) for q in qs) / max(1, len(qs)),
+            }
             if rows and rows[0].get("per_option"):
                 rs = [r for r in rows if t == "ALL" or r["question_type"] == t]
                 d["per_option"] = sum(r["correct"] for r in rs) / len(rs)

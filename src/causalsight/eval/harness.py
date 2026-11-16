@@ -60,8 +60,12 @@ def chain_metrics(raw: str, gt_regions: list, iou_thr: float = 0.5, t_tol: int =
         return a.temporal_offset(b) <= t_tol
 
     out["ground_st"] = sum(max(e.st_iou(g) for g in gt) for e in steps) / len(steps)
-    out["ground_spatial"] = sum(max((e.spatial_iou(g) for g in gt if near(e, g)), default=0.0) for e in steps) / len(steps)
-    out["ground_recall"] = sum(1 for g in gt if any(near(e, g) and e.spatial_iou(g) >= iou_thr for e in steps)) / len(gt)
+    out["ground_spatial"] = sum(
+        max((e.spatial_iou(g) for g in gt if near(e, g)), default=0.0) for e in steps
+    ) / len(steps)
+    out["ground_recall"] = sum(
+        1 for g in gt if any(near(e, g) and e.spatial_iou(g) >= iou_thr for e in steps)
+    ) / len(gt)
     out["t_offset"] = sum(min(e.temporal_offset(g) for g in gt) for e in steps) / len(steps)
     return out
 
@@ -117,15 +121,24 @@ def run(
         benchmark.mc_mode = mc
     if ids_file and hasattr(benchmark, "ids"):
         benchmark.ids = set(json.loads(Path(ids_file).read_text()))
-    cite = mask in ("cite", "cite_random", "cite_track", "cite_track_random")  # mask what a model itself cited (per item), from a harness output file
+    cite = mask in (
+        "cite",
+        "cite_random",
+        "cite_track",
+        "cite_track_random",
+    )  # mask what a model itself cited (per item), from a harness output file
     track_index = None
     if cite:
         if not chains:
-            raise ValueError("--mask cite needs --chains <harness per-item outputs jsonl of the citing model>")
+            raise ValueError(
+                "--mask cite needs --chains <harness per-item outputs jsonl of the citing model>"
+            )
         evidence = EvidenceIndex.from_outputs(chains)
         if mask in ("cite_track", "cite_track_random"):
             if not tracks:
-                raise ValueError("--mask cite_track needs --tracks <entity tracks json from cs-entity-tracks>")
+                raise ValueError(
+                    "--mask cite_track needs --tracks <entity tracks json from cs-entity-tracks>"
+                )
             from causalsight.eval.entity_tracks import EntityTrackIndex
 
             track_index = EntityTrackIndex.load(tracks, chains)
@@ -134,9 +147,19 @@ def run(
     if mask != "none" and evidence is None:
         raise ValueError("--mask needs --chains <generated chains jsonl>")
     rng = random.Random(seed)
-    n_total = CHAIN_SCALE if cite else N_TOTAL_FRAMES.get(bench, 128)  # cited spans live on the chain grid
-    tracker = TrackMasker(proposals_root or root / "derender_proposals") if mask in ("track", "track_random") else None
-    track_evidence = EvidenceIndex.from_chains(chains, last_only=True) if (tracker is not None and chains) else None
+    n_total = (
+        CHAIN_SCALE if cite else N_TOTAL_FRAMES.get(bench, 128)
+    )  # cited spans live on the chain grid
+    tracker = (
+        TrackMasker(proposals_root or root / "derender_proposals")
+        if mask in ("track", "track_random")
+        else None
+    )
+    track_evidence = (
+        EvidenceIndex.from_chains(chains, last_only=True)
+        if (tracker is not None and chains)
+        else None
+    )
     rows: list[dict] = []
     frame_cache: dict[Path, list] = {}
     t0 = time.time()
@@ -171,7 +194,9 @@ def run(
         items = [it for it in items if regions_of(it)]
     if item_ids:
         keep = set(json.loads(Path(item_ids).read_text()))
-        items = [it for it in items if it.id in keep]  # e.g. only items correct under the plain input
+        items = [
+            it for it in items if it.id in keep
+        ]  # e.g. only items correct under the plain input
     if per_type:
         items = stratified_sample(items, per_type, seed, key=qkey)
     if max_items:
@@ -181,13 +206,32 @@ def run(
     def flush() -> None:
         if not pending:
             return
-        raws = backend.generate_batch([p[1] for p in pending], [p[3] for p in pending], max_new_tokens)
+        raws = backend.generate_batch(
+            [p[1] for p in pending], [p[3] for p in pending], max_new_tokens
+        )
         for (item, _frames, regs, prompt), raw in zip(pending, raws):
             m = ANSWER_RE.search(raw)
-            sc = benchmark.score(item, m.group(1).strip() if m else raw)  # trained models answer inside <answer> tags
+            sc = benchmark.score(
+                item, m.group(1).strip() if m else raw
+            )  # trained models answer inside <answer> tags
             if instr == "chain":
-                sc.update(chain_metrics(raw, evidence.get_for_item(item.id, qkey(item)) if (evidence and not cite) else []))  # cited regions are not ground truth
-            row = {"id": item.id, "question_type": item.question_type, "prompt": prompt, "raw": raw, "gold": item.gold, **sc, **item.meta}
+                sc.update(
+                    chain_metrics(
+                        raw,
+                        evidence.get_for_item(item.id, qkey(item))
+                        if (evidence and not cite)
+                        else [],
+                    )
+                )  # cited regions are not ground truth
+            row = {
+                "id": item.id,
+                "question_type": item.question_type,
+                "prompt": prompt,
+                "raw": raw,
+                "gold": item.gold,
+                **sc,
+                **item.meta,
+            }
             if regs:
                 row["masked_fraction"] = round(masked_fraction(regs, n_total), 4)
             rows.append(row)
@@ -209,7 +253,14 @@ def run(
         elif tracker is not None:
             scene_index = int(item.id.split("_")[0])
             decisive = track_evidence.get(qkey(item)) if track_evidence else []
-            regions = tracker.regions_for(scene_index, decisive, n_total, max_frames, control=(mask == "track_random"), rng=rng)
+            regions = tracker.regions_for(
+                scene_index,
+                decisive,
+                n_total,
+                max_frames,
+                control=(mask == "track_random"),
+                rng=rng,
+            )
             if not regions:
                 continue  # decisive evidence matched no detection; skipped identically in both track modes
         if item.id in done:
@@ -221,8 +272,17 @@ def run(
                 if len(frame_cache) > 2 * batch_size:
                     frame_cache.clear()
                 if frames_dir:  # pre-extracted frames (eval pack); no video decoding
-                    frame_cache[item.video_path] = load_frames(frames_dir, {"frames": f"frames/{item.meta.get('frames_key', item.video_path.stem)}"}, max_frames)
-                    frame_cache[item.video_path] = [f if max(f.size) <= 640 else f.resize((640 * f.width // max(f.size), 640 * f.height // max(f.size))) for f in frame_cache[item.video_path]]
+                    frame_cache[item.video_path] = load_frames(
+                        frames_dir,
+                        {"frames": f"frames/{item.meta.get('frames_key', item.video_path.stem)}"},
+                        max_frames,
+                    )
+                    frame_cache[item.video_path] = [
+                        f
+                        if max(f.size) <= 640
+                        else f.resize((640 * f.width // max(f.size), 640 * f.height // max(f.size)))
+                        for f in frame_cache[item.video_path]
+                    ]
                 else:
                     frame_cache[item.video_path] = sample_frames(item.video_path, max_frames)
             frames = frame_cache[item.video_path]
@@ -263,7 +323,11 @@ def run(
         for t in sorted({r["question_type"] for r in rows}) + ["ALL"]:
             rs = [r for r in rows if t == "ALL" or r["question_type"] == t]
             ok = [r for r in rs if r.get("chain_ok")]
-            d = {"n": len(rs), "format_rate": sum(r.get("chain_ok", 0) for r in rs) / len(rs), "mean_steps": sum(r.get("n_steps", 0) for r in rs) / len(rs)}
+            d = {
+                "n": len(rs),
+                "format_rate": sum(r.get("chain_ok", 0) for r in rs) / len(rs),
+                "mean_steps": sum(r.get("n_steps", 0) for r in rs) / len(rs),
+            }
             for k in ("ground_st", "ground_spatial", "ground_recall", "t_offset"):
                 vals = [r[k] for r in ok if k in r]
                 if vals:
@@ -279,13 +343,27 @@ def main() -> None:
     p = argparse.ArgumentParser(description="CausalSight evaluation harness")
     p.add_argument("--model", required=True, help="HF model id, or 'dummy'")
     p.add_argument("--bench", required=True)
-    p.add_argument("--split", default=None, help="default: validation (clevrer) / debug (causalvqa)")
-    p.add_argument("--root", type=Path, default=None, help="benchmark root (default data/raw/<bench>)")
+    p.add_argument(
+        "--split", default=None, help="default: validation (clevrer) / debug (causalvqa)"
+    )
+    p.add_argument(
+        "--root", type=Path, default=None, help="benchmark root (default data/raw/<bench>)"
+    )
     p.add_argument("--limit", type=int, default=None)
     p.add_argument("--blind", action="store_true", help="replace the video with black frames")
     p.add_argument(
         "--mask",
-        choices=["none", "evidence", "random", "track", "track_random", "cite", "cite_random", "cite_track", "cite_track_random"],
+        choices=[
+            "none",
+            "evidence",
+            "random",
+            "track",
+            "track_random",
+            "cite",
+            "cite_random",
+            "cite_track",
+            "cite_track_random",
+        ],
         default="none",
         help="evidence: black out GT evidence boxes at their moments; random: same boxes at random positions; "
         "track: remove the decisive evidence objects for the whole video; track_random: same-size masks elsewhere; "
@@ -293,33 +371,126 @@ def main() -> None:
         "cite_random: same boxes at random positions; cite_track: every detection of the cited entities on every sampled frame "
         "(--tracks from cs-entity-tracks) plus the citations; cite_track_random: same-size boxes elsewhere on the same frames",
     )
-    p.add_argument("--proposals-root", type=Path, default=None, help="CLEVRER derender proposals dir (track modes)")
-    p.add_argument("--chains", type=Path, default=None, help="generated chains jsonl providing the evidence regions (cite modes: a harness per-item outputs jsonl)")
+    p.add_argument(
+        "--proposals-root",
+        type=Path,
+        default=None,
+        help="CLEVRER derender proposals dir (track modes)",
+    )
+    p.add_argument(
+        "--chains",
+        type=Path,
+        default=None,
+        help="generated chains jsonl providing the evidence regions (cite modes: a harness per-item outputs jsonl)",
+    )
     p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--per-type", type=int, default=None, help="stratified subset: this many items per question type")
-    p.add_argument("--instr", choices=list(INSTR), default="none", help="append the training-time format instruction (plain: <think>/<answer>; chain: triplet steps)")
-    p.add_argument("--max-new-tokens", type=int, default=64, help="raise to ~384 for --instr plain/chain")
-    p.add_argument("--mc", choices=["multi", "option"], default="multi", help="multiple choice as one letters prompt, or one yes/no item per option (chain models)")
-    p.add_argument("--frames-dir", type=Path, default=None, help="eval pack dir with frames/<video>/fNN.jpg (skips video decoding)")
-    p.add_argument("--ids-file", type=Path, default=None, help="JSON list of question ids to evaluate (nextqa val subset)")
-    p.add_argument("--tracks", type=Path, default=None, help="entity tracks json from cs-entity-tracks (cite_track modes)")
-    p.add_argument("--item-ids", type=Path, default=None, help="JSON list of item ids to keep (e.g. items correct under the plain input)")
-    p.add_argument("--batch-size", type=int, default=1, help="items per generate call; 16 on an 80 GB GPU, 1 on the Mac")
-    p.add_argument("--max-items", type=int, default=None, help="pilot: stop after this many items of the stratified subset")
+    p.add_argument(
+        "--per-type",
+        type=int,
+        default=None,
+        help="stratified subset: this many items per question type",
+    )
+    p.add_argument(
+        "--instr",
+        choices=list(INSTR),
+        default="none",
+        help="append the training-time format instruction (plain: <think>/<answer>; chain: triplet steps)",
+    )
+    p.add_argument(
+        "--max-new-tokens", type=int, default=64, help="raise to ~384 for --instr plain/chain"
+    )
+    p.add_argument(
+        "--mc",
+        choices=["multi", "option"],
+        default="multi",
+        help="multiple choice as one letters prompt, or one yes/no item per option (chain models)",
+    )
+    p.add_argument(
+        "--frames-dir",
+        type=Path,
+        default=None,
+        help="eval pack dir with frames/<video>/fNN.jpg (skips video decoding)",
+    )
+    p.add_argument(
+        "--ids-file",
+        type=Path,
+        default=None,
+        help="JSON list of question ids to evaluate (nextqa val subset)",
+    )
+    p.add_argument(
+        "--tracks",
+        type=Path,
+        default=None,
+        help="entity tracks json from cs-entity-tracks (cite_track modes)",
+    )
+    p.add_argument(
+        "--item-ids",
+        type=Path,
+        default=None,
+        help="JSON list of item ids to keep (e.g. items correct under the plain input)",
+    )
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=1,
+        help="items per generate call; 8-16 on an 80 GB GPU, 1 on a laptop",
+    )
+    p.add_argument(
+        "--max-items",
+        type=int,
+        default=None,
+        help="pilot: stop after this many items of the stratified subset",
+    )
     p.add_argument("--max-frames", type=int, default=16)
     p.add_argument("--device", default=None)
-    p.add_argument("--max-pixels", type=int, default=None, help="legacy per-frame pixel cap (151200 reproduces pre-2026-09-20 evaluations); default matches training")
-    p.add_argument("--init-adapter", default=None, help="adapter to merge before --model (normally found via the run's config.yaml)")
+    p.add_argument(
+        "--max-pixels",
+        type=int,
+        default=None,
+        help="legacy per-frame pixel cap (151200 reproduces pre-2026-09-20 evaluations); default matches training",
+    )
+    p.add_argument(
+        "--init-adapter",
+        default=None,
+        help="adapter to merge before --model (normally found via the run's config.yaml)",
+    )
     p.add_argument("--out", type=Path, default=None)
-    p.add_argument("--resume", action="store_true", help="if --out exists without its .summary.json, keep its finished items and run only the rest")
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help="if --out exists without its .summary.json, keep its finished items and run only the rest",
+    )
     args = p.parse_args()
     root = args.root or Path("data/raw") / args.bench
     if args.split is None:
         args.split = "debug" if args.bench == "causalvqa" else "validation"
     summary = run(
-        args.model, args.bench, args.split, root, args.out, args.limit, args.blind, args.max_frames,
-        mask=args.mask, chains=args.chains, seed=args.seed, per_type=args.per_type, proposals_root=args.proposals_root,
-        instr=args.instr, max_new_tokens=args.max_new_tokens, mc=args.mc, frames_dir=args.frames_dir, ids_file=args.ids_file, batch_size=args.batch_size, max_items=args.max_items, tracks=args.tracks, item_ids=args.item_ids, resume=args.resume, device=args.device, init_adapter=args.init_adapter, max_pixels=args.max_pixels,
+        args.model,
+        args.bench,
+        args.split,
+        root,
+        args.out,
+        args.limit,
+        args.blind,
+        args.max_frames,
+        mask=args.mask,
+        chains=args.chains,
+        seed=args.seed,
+        per_type=args.per_type,
+        proposals_root=args.proposals_root,
+        instr=args.instr,
+        max_new_tokens=args.max_new_tokens,
+        mc=args.mc,
+        frames_dir=args.frames_dir,
+        ids_file=args.ids_file,
+        batch_size=args.batch_size,
+        max_items=args.max_items,
+        tracks=args.tracks,
+        item_ids=args.item_ids,
+        resume=args.resume,
+        device=args.device,
+        init_adapter=args.init_adapter,
+        max_pixels=args.max_pixels,
     )
     print(json.dumps(summary, indent=2))
 

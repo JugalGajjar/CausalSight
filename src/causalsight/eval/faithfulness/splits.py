@@ -66,7 +66,12 @@ from causalsight.eval.masking import (
 )
 from causalsight.train.format import parse_chain
 
-PAIRS = {"cite": ("mask_cite", "mask_cite_random"), "entity_track": ("mask_cite_track", "mask_cite_track_random"), "gold_evidence": ("mask_evidence", "mask_random"), "object_track": ("mask_track", "mask_track_random")}
+PAIRS = {
+    "cite": ("mask_cite", "mask_cite_random"),
+    "entity_track": ("mask_cite_track", "mask_cite_track_random"),
+    "gold_evidence": ("mask_evidence", "mask_random"),
+    "object_track": ("mask_track", "mask_track_random"),
+}
 
 
 def cited_steps(raw: str) -> list[tuple[str | None, int, int, tuple]]:
@@ -84,13 +89,17 @@ def cited_steps(raw: str) -> list[tuple[str | None, int, int, tuple]]:
     return out
 
 
-def frames_of_span(t0: int, t1: int, n_sampled: int = N_FRAMES, n_total: int = CHAIN_SCALE) -> set[int]:
+def frames_of_span(
+    t0: int, t1: int, n_sampled: int = N_FRAMES, n_total: int = CHAIN_SCALE
+) -> set[int]:
     idx = sampled_frame_indices(n_total, n_sampled)
     tol = span_tolerance(n_total, n_sampled)
     return {f for f, orig in enumerate(idx) if t0 - tol <= orig <= t1 + tol}
 
 
-def gap_stats(runs: dict, a: str, b: str, ids: list[str], cluster: dict[str, str], rng: random.Random) -> dict | None:
+def gap_stats(
+    runs: dict, a: str, b: str, ids: list[str], cluster: dict[str, str], rng: random.Random
+) -> dict | None:
     """Flip rates of conditions a and b over the items of `ids` correct under plain, their difference and its CI."""
     ids = sorted(i for i in ids if i in runs[a] and i in runs[b])
     cp = [i for i in ids if runs["plain"][i]["correct"]]
@@ -107,7 +116,14 @@ def gap_stats(runs: dict, a: str, b: str, ids: list[str], cluster: dict[str, str
 
     lo, hi = _ci(gap, ids, rng, cluster=cluster)
     flo, fhi = _ci(lambda ids_: flip(a, ids_), ids, rng, cluster=cluster)
-    return {"n_correct": len(cp), "flip": flip(a, ids), "flip_ci": [flo, fhi], "flip_control": flip(b, ids), "gap": gap(ids), "gap_ci": [lo, hi]}
+    return {
+        "n_correct": len(cp),
+        "flip": flip(a, ids),
+        "flip_ci": [flo, fhi],
+        "flip_control": flip(b, ids),
+        "gap": gap(ids),
+        "gap_ci": [lo, hi],
+    }
 
 
 def hit_status(raw: str, video_tracks: dict, thr: float = 0.5) -> str | None:
@@ -124,11 +140,32 @@ def hit_status(raw: str, video_tracks: dict, thr: float = 0.5) -> str | None:
     return "all" if all(hits) else "not_all"
 
 
-STOP = {"the", "a", "an", "of", "in", "on", "at", "with", "and", "to", "is", "his", "her", "their", "its", "s"}
+STOP = {
+    "the",
+    "a",
+    "an",
+    "of",
+    "in",
+    "on",
+    "at",
+    "with",
+    "and",
+    "to",
+    "is",
+    "his",
+    "her",
+    "their",
+    "its",
+    "s",
+}
 
 
 def _tokens(text: str) -> list[str]:
-    return [w for w in "".join(ch.lower() if ch.isalnum() else " " for ch in text).split() if w not in STOP]
+    return [
+        w
+        for w in "".join(ch.lower() if ch.isalnum() else " " for ch in text).split()
+        if w not in STOP
+    ]
 
 
 def entities_in_text(raw: str, prompt: str, mode: str = "all") -> bool | None:
@@ -151,7 +188,9 @@ def _overlap_share(box: tuple, other: tuple) -> float:
     return max(0.0, w) * max(0.0, h) / area if area > 0 else 0.0
 
 
-def replay_controls(plain_path: Path, control_rows: dict, seed: int = 0) -> dict[str, tuple[list, list]]:
+def replay_controls(
+    plain_path: Path, control_rows: dict, seed: int = 0
+) -> dict[str, tuple[list, list]]:
     """Replays the seeded random control of a cite_random run (items in output order, as the harness drew
     them): item id -> (cited regions, control regions)."""
     ev = EvidenceIndex.from_outputs(plain_path)
@@ -180,7 +219,14 @@ def control_coverage(plain_path: Path, control_rows: dict, seed: int = 0) -> dic
     return out
 
 
-def entity_control_share(tracks_path: Path, plain_path: Path, control_rows: dict, seed: int = 0, cover: float = 0.3, max_area: float = 0.4) -> dict[str, float]:
+def entity_control_share(
+    tracks_path: Path,
+    plain_path: Path,
+    control_rows: dict,
+    seed: int = 0,
+    cover: float = 0.3,
+    max_area: float = 0.4,
+) -> dict[str, float]:
     """Replays the seeded entity-track control (items in output order) and returns, per item, the share of its
     control boxes that cover at least `cover` of another detected entity on the same frame."""
     from causalsight.eval.entity_tracks import EntityTrackIndex, avoiding_random_regions, frames_hit
@@ -245,11 +291,26 @@ def pooled(dir_: Path, tags: list[str]) -> dict:
         ids = sorted(runs["plain"])
         row = {"all": gap_stats(runs, a, b, ids, cluster, rng)}
         for g in ("yes", "no"):
-            row[g] = gap_stats(runs, a, b, [i for i in ids if str(runs["plain"][i].get("gold")) == g], cluster, rng)
-        vd = [i for i in ids if blind.get(i) is not None and runs["plain"][i]["correct"] and not blind[i]["correct"]]
+            row[g] = gap_stats(
+                runs, a, b, [i for i in ids if str(runs["plain"][i].get("gold")) == g], cluster, rng
+            )
+        vd = [
+            i
+            for i in ids
+            if blind.get(i) is not None and runs["plain"][i]["correct"] and not blind[i]["correct"]
+        ]
         row["video_dependent"] = gap_stats(runs, a, b, vd, cluster, rng)
-        row["video_dependent_yes"] = gap_stats(runs, a, b, [i for i in vd if str(runs["plain"][i].get("gold")) == "yes"], cluster, rng)
-        cp = [i for i in ids if runs["plain"][i]["correct"] and i in runs[a] and i in runs[b] and blind.get(i) is not None]
+        row["video_dependent_yes"] = gap_stats(
+            runs, a, b, [i for i in vd if str(runs["plain"][i].get("gold")) == "yes"], cluster, rng
+        )
+        cp = [
+            i
+            for i in ids
+            if runs["plain"][i]["correct"]
+            and i in runs[a]
+            and i in runs[b]
+            and blind.get(i) is not None
+        ]
         row["blind_flip"] = sum(1 for i in cp if not blind[i]["correct"]) / len(cp) if cp else None
         out[name] = row
     return out
@@ -292,14 +353,20 @@ def recite(plain: dict, masked: dict, ids: list[str], thr: float = 0.5) -> dict:
         "same_box": c["same_box"] / s,
         "same_frame_other_place": c["same_frame_other_place"] / s,
         "other_frame": c["other_frame"] / s,
-        "same_entities": same_entities / c["items_with_entities"] if c["items_with_entities"] else None,
+        "same_entities": same_entities / c["items_with_entities"]
+        if c["items_with_entities"]
+        else None,
         "items_without_citation_under_mask": c["items_without_citation_under_mask"],
     }
 
 
-def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Path | None = None) -> dict:
+def splits(
+    dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Path | None = None
+) -> dict:
     names = ["plain", "blind"] + [k for pair in PAIRS.values() for k in pair]
-    runs = {k: load(dir_ / f"{tag}_{k}.jsonl") for k in names if (dir_ / f"{tag}_{k}.jsonl").exists()}
+    runs = {
+        k: load(dir_ / f"{tag}_{k}.jsonl") for k in names if (dir_ / f"{tag}_{k}.jsonl").exists()
+    }
     if "plain" not in runs:
         raise SystemExit(f"missing {tag}_plain.jsonl in {dir_}")
     plain = runs["plain"]
@@ -314,7 +381,9 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
         row: dict = {"n": len(gids)}
         if "blind" in runs:
             cp = [i for i in gids if plain[i]["correct"] and i in runs["blind"]]
-            row["blind_flip"] = sum(1 for i in cp if not runs["blind"][i]["correct"]) / len(cp) if cp else None
+            row["blind_flip"] = (
+                sum(1 for i in cp if not runs["blind"][i]["correct"]) / len(cp) if cp else None
+            )
         for name, (a, b) in PAIRS.items():
             if a in runs and b in runs:
                 row[name] = gap_stats(runs, a, b, gids, cluster, rng)
@@ -336,8 +405,18 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
         by_blind: dict = {"n_video_dependent": len(vd), "n_not": len(nvd)}
         for name, (a, b) in PAIRS.items():
             if a in runs and b in runs:
-                by_blind[name] = {"video_dependent": gap_stats(runs, a, b, vd, cluster, rng), "not": gap_stats(runs, a, b, nvd, cluster, rng),
-                                  "video_dependent_yes": gap_stats(runs, a, b, [i for i in vd if str(plain[i].get("gold")) == "yes"], cluster, rng)}
+                by_blind[name] = {
+                    "video_dependent": gap_stats(runs, a, b, vd, cluster, rng),
+                    "not": gap_stats(runs, a, b, nvd, cluster, rng),
+                    "video_dependent_yes": gap_stats(
+                        runs,
+                        a,
+                        b,
+                        [i for i in vd if str(plain[i].get("gold")) == "yes"],
+                        cluster,
+                        rng,
+                    ),
+                }
         out["by_blind"] = by_blind
 
     sym: dict = {}
@@ -346,10 +425,18 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
             both = [i for i in ids if i in runs[a] and i in runs[b]]
             wrong = [i for i in both if not plain[i]["correct"]]
             acc = lambda k, both=both: sum(runs[k][i]["correct"] for i in both) / len(both)
-            sym[name] = {"n": len(both), "n_wrong": len(wrong),
-                         "wrong_to_right": sum(runs[a][i]["correct"] for i in wrong) / len(wrong) if wrong else None,
-                         "wrong_to_right_control": sum(runs[b][i]["correct"] for i in wrong) / len(wrong) if wrong else None,
-                         "net": acc(a) - sum(plain[i]["correct"] for i in both) / len(both), "net_control": acc(b) - sum(plain[i]["correct"] for i in both) / len(both)}
+            sym[name] = {
+                "n": len(both),
+                "n_wrong": len(wrong),
+                "wrong_to_right": sum(runs[a][i]["correct"] for i in wrong) / len(wrong)
+                if wrong
+                else None,
+                "wrong_to_right_control": sum(runs[b][i]["correct"] for i in wrong) / len(wrong)
+                if wrong
+                else None,
+                "net": acc(a) - sum(plain[i]["correct"] for i in both) / len(both),
+                "net_control": acc(b) - sum(plain[i]["correct"] for i in both) / len(both),
+            }
     out["symmetric"] = sym
 
     if all("qset" in r and "pred" in r for r in plain.values()):
@@ -359,29 +446,66 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
 
         def credit(rows: dict, items: list[str]) -> float:
             yes = [i for i in items if rows[i]["pred"] == "yes"]
-            return 1 / len(items) if not yes else (1 / len(yes) if any(str(plain[i]["gold"]) == "yes" for i in yes) else 0.0)
+            return (
+                1 / len(items)
+                if not yes
+                else (1 / len(yes) if any(str(plain[i]["gold"]) == "yes" for i in yes) else 0.0)
+            )
 
         sel: dict = {}
         for name, (a, b) in PAIRS.items():
             if a in runs and b in runs:
-                full = [q for q, items in qs.items() if all(i in runs[a] and i in runs[b] for i in items) and credit(plain, items) == 1.0]
+                full = [
+                    q
+                    for q, items in qs.items()
+                    if all(i in runs[a] and i in runs[b] for i in items)
+                    and credit(plain, items) == 1.0
+                ]
                 if full:
-                    sel[name] = {"n_questions": len(full), "flip": sum(credit(runs[a], qs[q]) < 1.0 for q in full) / len(full), "flip_control": sum(credit(runs[b], qs[q]) < 1.0 for q in full) / len(full)}
+                    sel[name] = {
+                        "n_questions": len(full),
+                        "flip": sum(credit(runs[a], qs[q]) < 1.0 for q in full) / len(full),
+                        "flip_control": sum(credit(runs[b], qs[q]) < 1.0 for q in full) / len(full),
+                    }
         out["selection"] = sel
 
-    spans = [len(frames_of_span(t0, t1)) for i in ids for _e, t0, t1, _b in cited_steps(plain[i].get("raw", ""))]
+    spans = [
+        len(frames_of_span(t0, t1))
+        for i in ids
+        for _e, t0, t1, _b in cited_steps(plain[i].get("raw", ""))
+    ]
     out["frames"] = sum(spans) / len(spans) if spans else None
 
     if "mask_cite" in runs and "mask_cite_random" in runs:
         cov = control_coverage(dir_ / f"{tag}_plain.jsonl", runs["mask_cite_random"])
         vals = list(cov.values())
         if vals:
-            ctl = {"mean_covered": sum(vals) / len(vals), "share_untouched": sum(v == 0 for v in vals) / len(vals), "share_half_covered": sum(v >= 0.5 for v in vals) / len(vals)}
-            ctl["untouched"] = gap_stats(runs, "mask_cite", "mask_cite_random", [i for i in ids if cov.get(i) == 0], cluster, rng)
-            ctl["untouched_yes"] = gap_stats(runs, "mask_cite", "mask_cite_random", [i for i in ids if cov.get(i) == 0 and str(plain[i].get("gold")) == "yes"], cluster, rng)
+            ctl = {
+                "mean_covered": sum(vals) / len(vals),
+                "share_untouched": sum(v == 0 for v in vals) / len(vals),
+                "share_half_covered": sum(v >= 0.5 for v in vals) / len(vals),
+            }
+            ctl["untouched"] = gap_stats(
+                runs,
+                "mask_cite",
+                "mask_cite_random",
+                [i for i in ids if cov.get(i) == 0],
+                cluster,
+                rng,
+            )
+            ctl["untouched_yes"] = gap_stats(
+                runs,
+                "mask_cite",
+                "mask_cite_random",
+                [i for i in ids if cov.get(i) == 0 and str(plain[i].get("gold")) == "yes"],
+                cluster,
+                rng,
+            )
             out["control"] = ctl
 
-    in_text = {i: entities_in_text(plain[i].get("raw", ""), plain[i].get("prompt", "")) for i in ids}
+    in_text = {
+        i: entities_in_text(plain[i].get("raw", ""), plain[i].get("prompt", "")) for i in ids
+    }
     if any(v is not None for v in in_text.values()):
         by_text: dict = {}
         for key, val in (("in_text", True), ("not_in_text", False)):
@@ -391,15 +515,33 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
                 a, b = PAIRS[name]
                 if a in runs and b in runs:
                     row[name] = gap_stats(runs, a, b, tids, cluster, rng)
-                    row[name + "_yes"] = gap_stats(runs, a, b, [i for i in tids if str(plain[i].get("gold")) == "yes"], cluster, rng)
+                    row[name + "_yes"] = gap_stats(
+                        runs,
+                        a,
+                        b,
+                        [i for i in tids if str(plain[i].get("gold")) == "yes"],
+                        cluster,
+                        rng,
+                    )
             by_text[key] = row
-        tids = [i for i in ids if entities_in_text(plain[i].get("raw", ""), plain[i].get("prompt", ""), "none") is True]
+        tids = [
+            i
+            for i in ids
+            if entities_in_text(plain[i].get("raw", ""), plain[i].get("prompt", ""), "none") is True
+        ]
         row = {"n": len(tids)}
         for name in ("cite", "entity_track"):
             a, b = PAIRS[name]
             if a in runs and b in runs:
                 row[name] = gap_stats(runs, a, b, tids, cluster, rng)
-                row[name + "_yes"] = gap_stats(runs, a, b, [i for i in tids if str(plain[i].get("gold")) == "yes"], cluster, rng)
+                row[name + "_yes"] = gap_stats(
+                    runs,
+                    a,
+                    b,
+                    [i for i in tids if str(plain[i].get("gold")) == "yes"],
+                    cluster,
+                    rng,
+                )
         by_text["no_overlap"] = row
         out["by_text"] = by_text
 
@@ -411,8 +553,16 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
             # stability of the citation under an irrelevant mask, only where the answer itself is unchanged
             # (prediction-preserving filter): otherwise a moved box could reflect a changed answer
             key = "pred" if all("pred" in plain[i] for i in cids[:1]) else "correct"
-            same = [i for i in cids if i in runs["mask_cite_random"] and runs["mask_cite_random"][i].get(key) == plain[i].get(key)]
-            out["recite"]["cite_random_same_answer"] = {**recite(plain, runs["mask_cite_random"], same), "share_items": len(same) / len(cids) if cids else None}
+            same = [
+                i
+                for i in cids
+                if i in runs["mask_cite_random"]
+                and runs["mask_cite_random"][i].get(key) == plain[i].get(key)
+            ]
+            out["recite"]["cite_random_same_answer"] = {
+                **recite(plain, runs["mask_cite_random"], same),
+                "share_items": len(same) / len(cids) if cids else None,
+            }
 
     if tracks_path and Path(tracks_path).exists():
         tracks = json.loads(Path(tracks_path).read_text())
@@ -431,24 +581,71 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
             cited_f = set().union(*(frames_of_span(t0, t1) for _e, t0, t1, _b in steps))
             nfr[i] = sum(len(d) for d in dets) / len(dets)
             cover[i] = len(cited_f & allf) / len(allf)
-        for label, lo, hi in (("1-8", 0, 8.5), ("9-13", 8.5, 13.5), ("14-15", 13.5, 15.5), ("16", 15.5, 99)):
+        for label, lo, hi in (
+            ("1-8", 0, 8.5),
+            ("9-13", 8.5, 13.5),
+            ("14-15", 13.5, 15.5),
+            ("16", 15.5, 99),
+        ):
             b_ids = [i for i, v in nfr.items() if lo <= v < hi]
-            dose["by_frames"][label] = {"n": len(b_ids), "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng) if "mask_cite" in runs else None,
-                                        "entity_track": gap_stats(runs, "mask_cite_track", "mask_cite_track_random", b_ids, cluster, rng) if "mask_cite_track" in runs else None}
+            dose["by_frames"][label] = {
+                "n": len(b_ids),
+                "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng)
+                if "mask_cite" in runs
+                else None,
+                "entity_track": gap_stats(
+                    runs, "mask_cite_track", "mask_cite_track_random", b_ids, cluster, rng
+                )
+                if "mask_cite_track" in runs
+                else None,
+            }
         for label, lo, hi in (("<0.15", 0, 0.15), ("0.15-0.3", 0.15, 0.3), (">=0.3", 0.3, 9)):
             b_ids = [i for i, v in cover.items() if lo <= v < hi]
-            dose["by_cover"][label] = {"n": len(b_ids), "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng) if "mask_cite" in runs else None}
+            dose["by_cover"][label] = {
+                "n": len(b_ids),
+                "cite": gap_stats(runs, "mask_cite", "mask_cite_random", b_ids, cluster, rng)
+                if "mask_cite" in runs
+                else None,
+            }
         out["dose"] = dose
         if "mask_cite_track" in runs and "mask_cite_track_random" in runs:
-            share = entity_control_share(Path(tracks_path), dir_ / f"{tag}_plain.jsonl", runs["mask_cite_track_random"])
+            share = entity_control_share(
+                Path(tracks_path), dir_ / f"{tag}_plain.jsonl", runs["mask_cite_track_random"]
+            )
             vals = sorted(share.values())
-            ec: dict = {"n": len(vals), "mean_share": sum(vals) / len(vals) if vals else None, "median_share": vals[len(vals) // 2] if vals else None}
-            for label, keep in (("on_other_entity", lambda v: v >= 0.5), ("mixed", lambda v: 0.1 < v < 0.5), ("on_background", lambda v: v <= 0.1)):
+            ec: dict = {
+                "n": len(vals),
+                "mean_share": sum(vals) / len(vals) if vals else None,
+                "median_share": vals[len(vals) // 2] if vals else None,
+            }
+            for label, keep in (
+                ("on_other_entity", lambda v: v >= 0.5),
+                ("mixed", lambda v: 0.1 < v < 0.5),
+                ("on_background", lambda v: v <= 0.1),
+            ):
                 sids = [i for i, v in share.items() if keep(v)]
-                ec[label] = {"n": len(sids), "entity_track": gap_stats(runs, "mask_cite_track", "mask_cite_track_random", sids, cluster, rng),
-                             "entity_track_yes": gap_stats(runs, "mask_cite_track", "mask_cite_track_random", [i for i in sids if str(plain[i].get("gold")) == "yes"], cluster, rng)}
+                ec[label] = {
+                    "n": len(sids),
+                    "entity_track": gap_stats(
+                        runs, "mask_cite_track", "mask_cite_track_random", sids, cluster, rng
+                    ),
+                    "entity_track_yes": gap_stats(
+                        runs,
+                        "mask_cite_track",
+                        "mask_cite_track_random",
+                        [i for i in sids if str(plain[i].get("gold")) == "yes"],
+                        cluster,
+                        rng,
+                    ),
+                }
             out["entity_control"] = ec
-        status = {i: hit_status(plain[i].get("raw", ""), tracks.get(plain[i].get("frames_key") or i.split("_")[0], {})) for i in ids}
+        status = {
+            i: hit_status(
+                plain[i].get("raw", ""),
+                tracks.get(plain[i].get("frames_key") or i.split("_")[0], {}),
+            )
+            for i in ids
+        }
         by_hit: dict = {}
         for s in ("all", "not_all"):
             sids = [i for i in ids if status[i] == s]
@@ -459,7 +656,12 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
                     row[name] = gap_stats(runs, a, b, sids, cluster, rng)
             by_hit[s] = row
         out["by_hit"] = by_hit
-    if proposals and Path(proposals).exists() and "mask_cite" in runs and "mask_cite_random" in runs:
+    if (
+        proposals
+        and Path(proposals).exists()
+        and "mask_cite" in runs
+        and "mask_cite_random" in runs
+    ):
         from causalsight.data.clevrer_evidence import ProposalIndex
         from causalsight.eval.object_grounding import step_scores
 
@@ -470,7 +672,9 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
             if scene not in idx_cache:
                 if len(idx_cache) > 64:
                     idx_cache.clear()
-                idx_cache[scene] = ProposalIndex.load(Path(proposals) / f"proposal_{scene:05d}.json")
+                idx_cache[scene] = ProposalIndex.load(
+                    Path(proposals) / f"proposal_{scene:05d}.json"
+                )
             return idx_cache[scene]
 
         grid = sampled_frame_indices(CHAIN_SCALE, N_FRAMES)
@@ -486,24 +690,44 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
             hit = False
             for t0, t1, cb in ctrl_of.get(i, ([], []))[1]:
                 for f in frames_of_span(t0, t1):
-                    for (ob, _score) in pidx(i)._frame(grid[f]).values():
-                        if _overlap_share(tuple(ob), tuple(cb)) >= 0.3:  # the control covers at least 30% of an object
+                    for ob, _score in pidx(i)._frame(grid[f]).values():
+                        if (
+                            _overlap_share(tuple(ob), tuple(cb)) >= 0.3
+                        ):  # the control covers at least 30% of an object
                             hit = True
             (on_obj if hit else on_bg).append(i)
         g = lambda sub_: gap_stats(runs, "mask_cite", "mask_cite_random", sub_, cluster, rng)
-        out["clevrer"] = {"hit_all": {"n": len(good), "cite": g(good)}, "hit_not_all": {"n": len(bad), "cite": g(bad)},
-                          "control_on_object": {"n": len(on_obj), "cite": g(on_obj)}, "control_on_background": {"n": len(on_bg), "cite": g(on_bg)}}
+        out["clevrer"] = {
+            "hit_all": {"n": len(good), "cite": g(good)},
+            "hit_not_all": {"n": len(bad), "cite": g(bad)},
+            "control_on_object": {"n": len(on_obj), "cite": g(on_obj)},
+            "control_on_background": {"n": len(on_bg), "cite": g(on_bg)},
+        }
     return out
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("dir", type=Path)
     ap.add_argument("--tag", default=None)
-    ap.add_argument("--proposals", type=Path, default=None, help="CLEVRER derender proposals dir: adds the citation-correctness and control-strata splits")
-    ap.add_argument("--pool", nargs="+", default=None, help="tags to pool (writes <name>_pooled.json)")
+    ap.add_argument(
+        "--proposals",
+        type=Path,
+        default=None,
+        help="CLEVRER derender proposals dir: adds the citation-correctness and control-strata splits",
+    )
+    ap.add_argument(
+        "--pool", nargs="+", default=None, help="tags to pool (writes <name>_pooled.json)"
+    )
     ap.add_argument("--name", default="pooled")
-    ap.add_argument("--tracks", type=Path, default=None, help="entity tracks json (cs-entity-tracks): adds the split by citation hit")
+    ap.add_argument(
+        "--tracks",
+        type=Path,
+        default=None,
+        help="entity tracks json (cs-entity-tracks): adds the split by citation hit",
+    )
     a = ap.parse_args()
     if a.pool:
         res = pooled(a.dir, a.pool)

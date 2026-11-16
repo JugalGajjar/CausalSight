@@ -28,12 +28,27 @@ def synthetic_annotation(tmp_path: Path) -> Path:
         for i in range(3):
             vis = not (i == 1 and f < 5) and not (i == 0 and f >= 15)
             speed = 0.0 if (i == 2 and f < 12) else 1.0  # cylinder stationary until hit at 12
-            objs.append({"object_id": i, "location": [f * 0.1, 0, 0], "orientation": [0, 0, 0],
-                         "velocity": [speed, 0, 0], "angular_velocity": [0, 0, 0], "inside_camera_view": vis})
+            objs.append(
+                {
+                    "object_id": i,
+                    "location": [f * 0.1, 0, 0],
+                    "orientation": [0, 0, 0],
+                    "velocity": [speed, 0, 0],
+                    "angular_velocity": [0, 0, 0],
+                    "inside_camera_view": vis,
+                }
+            )
         traj.append({"frame_id": f, "objects": objs})
-    ann = {"scene_index": 0, "video_filename": "v.mp4", "object_property": props, "motion_trajectory": traj,
-           "collision": [{"object_ids": [0, 1], "frame_id": 8, "location": [0, 0, 0]},
-                         {"object_ids": [1, 2], "frame_id": 12, "location": [0, 0, 0]}]}
+    ann = {
+        "scene_index": 0,
+        "video_filename": "v.mp4",
+        "object_property": props,
+        "motion_trajectory": traj,
+        "collision": [
+            {"object_ids": [0, 1], "frame_id": 8, "location": [0, 0, 0]},
+            {"object_ids": [1, 2], "frame_id": 12, "location": [0, 0, 0]},
+        ],
+    }
     p = tmp_path / "ann.json"
     p.write_text(json.dumps(ann))
     return p
@@ -56,20 +71,89 @@ def test_executor_descriptive_programs(tmp_path):
     run = lambda pg: TracedExecutor.answer_str(TracedExecutor(s).run(pg))
     assert run(["objects", "metal", "filter_material", "count"]) == "2"
     assert run(["events", "objects", "filter_in", "count"]) == "1"
-    assert run(["events", "objects", "blue", "filter_color", "unique", "filter_collision", "first", "filter_order",
-                "objects", "blue", "filter_color", "unique", "get_col_partner", "query_color"]) == "red"
-    assert run(["objects", "gray", "filter_color", "start", "get_frame", "filter_stationary", "exist"]) == "yes"
-    assert run(["objects", "gray", "filter_color", "end", "get_frame", "filter_stationary", "exist"]) == "no"
-    assert run(["events", "events", "objects", "sphere", "filter_shape", "unique", "filter_in", "unique",
-                "filter_after", "objects", "filter_collision", "count"]) == "2"
+    assert (
+        run(
+            [
+                "events",
+                "objects",
+                "blue",
+                "filter_color",
+                "unique",
+                "filter_collision",
+                "first",
+                "filter_order",
+                "objects",
+                "blue",
+                "filter_color",
+                "unique",
+                "get_col_partner",
+                "query_color",
+            ]
+        )
+        == "red"
+    )
+    assert (
+        run(["objects", "gray", "filter_color", "start", "get_frame", "filter_stationary", "exist"])
+        == "yes"
+    )
+    assert (
+        run(["objects", "gray", "filter_color", "end", "get_frame", "filter_stationary", "exist"])
+        == "no"
+    )
+    assert (
+        run(
+            [
+                "events",
+                "events",
+                "objects",
+                "sphere",
+                "filter_shape",
+                "unique",
+                "filter_in",
+                "unique",
+                "filter_after",
+                "objects",
+                "filter_collision",
+                "count",
+            ]
+        )
+        == "2"
+    )
 
 
 def test_executor_explanatory_belong_to(tmp_path):
     s = Scene.from_annotation(synthetic_annotation(tmp_path))
-    q = ["events", "events", "objects", "blue", "filter_color", "unique", "filter_collision", "objects", "gray",
-         "filter_color", "unique", "filter_collision", "unique", "filter_ancestor", "belong_to"]
-    choice_col = ["events", "objects", "red", "filter_color", "unique", "filter_collision", "objects", "blue",
-                  "filter_color", "unique", "filter_collision", "unique"]
+    q = [
+        "events",
+        "events",
+        "objects",
+        "blue",
+        "filter_color",
+        "unique",
+        "filter_collision",
+        "objects",
+        "gray",
+        "filter_color",
+        "unique",
+        "filter_collision",
+        "unique",
+        "filter_ancestor",
+        "belong_to",
+    ]
+    choice_col = [
+        "events",
+        "objects",
+        "red",
+        "filter_color",
+        "unique",
+        "filter_collision",
+        "objects",
+        "blue",
+        "filter_color",
+        "unique",
+        "filter_collision",
+        "unique",
+    ]
     choice_obj = ["objects", "gray", "filter_color", "unique"]
     assert TracedExecutor.answer_str(TracedExecutor(s).run(choice_col + q)) == "yes"
     assert TracedExecutor.answer_str(TracedExecutor(s).run(choice_obj + q)) == "no"
@@ -77,9 +161,27 @@ def test_executor_explanatory_belong_to(tmp_path):
 
 def test_executor_counterfactual_is_unknown(tmp_path):
     s = Scene.from_annotation(synthetic_annotation(tmp_path))
-    pg = ["all_events", "objects", "red", "filter_color", "unique", "filter_collision", "objects", "blue", "filter_color",
-          "unique", "filter_collision", "unique", "all_events", "objects", "gray", "filter_color", "unique",
-          "get_counterfact", "belong_to"]
+    pg = [
+        "all_events",
+        "objects",
+        "red",
+        "filter_color",
+        "unique",
+        "filter_collision",
+        "objects",
+        "blue",
+        "filter_color",
+        "unique",
+        "filter_collision",
+        "unique",
+        "all_events",
+        "objects",
+        "gray",
+        "filter_color",
+        "unique",
+        "get_counterfact",
+        "belong_to",
+    ]
     assert TracedExecutor.answer_str(TracedExecutor(s).run(pg)) == "<unknown>"
 
 
@@ -95,11 +197,18 @@ def test_real_data_executor_matches_gt():
         s = Scene.from_annotation(find_annotation(ROOT, "train", v["scene_index"]))
         for q in v["questions"]:
             if q["question_type"] == "descriptive":
-                assert TracedExecutor.answer_str(TracedExecutor(s).run(q["program"])) == str(q["answer"]), q["question"]
+                assert TracedExecutor.answer_str(TracedExecutor(s).run(q["program"])) == str(
+                    q["answer"]
+                ), q["question"]
             elif q["question_type"] == "explanatory":
                 for c in q["choices"]:
-                    out = TracedExecutor.answer_str(TracedExecutor(s).run(c["program"] + q["program"]))
-                    assert {"yes": "correct", "no": "wrong"}[out] == c["answer"], (q["question"], c["choice"])
+                    out = TracedExecutor.answer_str(
+                        TracedExecutor(s).run(c["program"] + q["program"])
+                    )
+                    assert {"yes": "correct", "no": "wrong"}[out] == c["answer"], (
+                        q["question"],
+                        c["choice"],
+                    )
 
 
 @pytest.mark.skipif(not HAVE_DATA, reason="CLEVRER not downloaded")
@@ -111,17 +220,21 @@ def test_real_data_chains_are_well_formed():
     n_ok = 0
     for v in videos:
         s = Scene.from_annotation(find_annotation(ROOT, "train", v["scene_index"]))
-        p = ProposalIndex.load(ROOT / "derender_proposals" / f"proposal_{v['scene_index']:05d}.json")
+        p = ProposalIndex.load(
+            ROOT / "derender_proposals" / f"proposal_{v['scene_index']:05d}.json"
+        )
         b = ChainBuilder(s, p)
         for q in v["questions"]:
-            for c in ([None] if q["question_type"] == "descriptive" else q["choices"]):
+            for c in [None] if q["question_type"] == "descriptive" else q["choices"]:
                 chain, status = b.build(q, c)
                 assert status in ("ok", "no_evidence"), status
                 if chain is None:
                     continue
                 n_ok += 1
                 chain.validate()
-                answers = [t.answer for t in chain.triplets if t.question.startswith("Which object is")]
+                answers = [
+                    t.answer for t in chain.triplets if t.question.startswith("Which object is")
+                ]
                 assert len(answers) == len(set(answers)), "duplicate object resolution"
                 for t in chain.triplets:
                     assert 0 <= t.evidence.t_start <= t.evidence.t_end < 128

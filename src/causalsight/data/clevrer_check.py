@@ -155,7 +155,9 @@ def check_questions(path: Path, rep: Report, sample_n: int) -> dict[str, Any]:
     if prog_missing:
         rep.check(FAIL, "every train/val question has a program", f"missing: {dict(prog_missing)}")
     else:
-        rep.check(PASS, "every train/val question has a program", f"{len(modules)} distinct modules")
+        rep.check(
+            PASS, "every train/val question has a program", f"{len(modules)} distinct modules"
+        )
     for t in ("descriptive", "explanatory", "predictive", "counterfactual"):
         if t not in types:
             rep.check(WARN, f"question type {t} present", "absent")
@@ -174,7 +176,9 @@ def check_annotations(root: Path, rep: Report, n: int, rng: random.Random) -> di
     if not files:
         rep.check(FAIL, "annotation files found", f"no annotation_*.json under {root}")
         return {}
-    rep.check(PASS, "annotation files found", f"{len(files)} files, e.g. {files[0].relative_to(root)}")
+    rep.check(
+        PASS, "annotation files found", f"{len(files)} files, e.g. {files[0].relative_to(root)}"
+    )
     picks = rng.sample(files, min(n, len(files)))
 
     keys = Counter()
@@ -234,16 +238,24 @@ def check_annotations(root: Path, rep: Report, n: int, rng: random.Random) -> di
         rep.section("Annotations: structure of one file", _type_tree(first))
 
     if loc_dims and set(loc_dims) == {3}:
-        rep.check(WARN, "annotation locations are 3D world coords", "no 2D boxes here; use derender proposals")
+        rep.check(
+            WARN,
+            "annotation locations are 3D world coords",
+            "no 2D boxes here; use derender proposals",
+        )
     elif loc_dims and 2 in loc_dims:
         rep.check(PASS, "annotation locations include 2D coords", str(dict(loc_dims)))
     else:
         rep.check(FAIL, "annotation object location field", f"unexpected: {dict(loc_dims)}")
     if coll_frame_ids:
-        rep.check(PASS, "collision events carry frame_id", f"{len(coll_frame_ids)} events in sample")
+        rep.check(
+            PASS, "collision events carry frame_id", f"{len(coll_frame_ids)} events in sample"
+        )
     else:
         rep.check(FAIL, "collision events carry frame_id", "none found")
-    if "object_property" in keys and {"color", "material", "shape"} <= (set(obj_fields) | _prop_fields(first)):
+    if "object_property" in keys and {"color", "material", "shape"} <= (
+        set(obj_fields) | _prop_fields(first)
+    ):
         rep.check(PASS, "object_property has color/material/shape", "")
     else:
         rep.check(FAIL, "object_property has color/material/shape", str(dict(obj_fields)))
@@ -259,14 +271,31 @@ def _prop_fields(a: dict | None) -> set[str]:
 # ---------------------------------------------------------------- derender proposals
 
 
-def check_proposals(root: Path, rep: Report, n: int, rng: random.Random, expected_frames: Counter | None) -> None:
-    cands = [p for p in root.rglob("*.json") if "proposal" in str(p.parent).lower() or p.name.startswith("sim_")]
-    cands = [p for p in cands if "annotation_" not in p.name and p.name not in ("train.json", "validation.json", "test.json")]
+def check_proposals(
+    root: Path, rep: Report, n: int, rng: random.Random, expected_frames: Counter | None
+) -> None:
+    cands = [
+        p
+        for p in root.rglob("*.json")
+        if "proposal" in str(p.parent).lower() or p.name.startswith("sim_")
+    ]
+    cands = [
+        p
+        for p in cands
+        if "annotation_" not in p.name
+        and p.name not in ("train.json", "validation.json", "test.json")
+    ]
     if not cands:
-        rep.check(FAIL, "derender proposals found", "download derender_proposals.zip; no proposal json found")
+        rep.check(
+            FAIL,
+            "derender proposals found",
+            "download derender_proposals.zip; no proposal json found",
+        )
         return
     cands = sorted(cands)
-    rep.check(PASS, "derender proposals found", f"{len(cands)} files, e.g. {cands[0].relative_to(root)}")
+    rep.check(
+        PASS, "derender proposals found", f"{len(cands)} files, e.g. {cands[0].relative_to(root)}"
+    )
     picks = rng.sample(cands, min(n, len(cands)))
 
     top_keys = Counter()
@@ -296,7 +325,11 @@ def check_proposals(root: Path, rep: Report, n: int, rng: random.Random, expecte
                 if m is None:
                     mask_types["absent"] += 1
                     continue
-                mask_types[type(m.get("counts", None)).__name__ if isinstance(m, dict) else type(m).__name__] += 1
+                mask_types[
+                    type(m.get("counts", None)).__name__
+                    if isinstance(m, dict)
+                    else type(m).__name__
+                ] += 1
                 if isinstance(m, dict) and "size" in m:
                     mask_size[tuple(m["size"])] += 1
                     if example_box is None or box_ok < 50:
@@ -323,13 +356,17 @@ def check_proposals(root: Path, rep: Report, n: int, rng: random.Random, expecte
         f"RLE -> box decode: ok={box_ok} fail={box_fail}, example normalized box={example_box}",
     ]
     if expected_frames:
-        lines.append(f"annotation trajectory frames per video (for comparison): {dict(sorted(expected_frames.items()))}")
+        lines.append(
+            f"annotation trajectory frames per video (for comparison): {dict(sorted(expected_frames.items()))}"
+        )
     rep.section("Proposals: statistics", lines)
     if first:
         rep.section("Proposals: structure of one file", _type_tree(first, max_depth=5))
 
     if box_ok and not box_fail:
-        rep.check(PASS, "proposal masks decode to 2D boxes", f"{box_ok} decoded, sizes {dict(mask_size)}")
+        rep.check(
+            PASS, "proposal masks decode to 2D boxes", f"{box_ok} decoded, sizes {dict(mask_size)}"
+        )
     elif box_ok:
         rep.check(WARN, "proposal masks decode to 2D boxes", f"ok={box_ok} fail={box_fail}")
     else:
@@ -337,9 +374,17 @@ def check_proposals(root: Path, rep: Report, n: int, rng: random.Random, expecte
     if {"color", "material", "shape"} <= set(obj_keys):
         rep.check(PASS, "proposal objects carry attributes for matching to annotation objects", "")
     else:
-        rep.check(WARN, "proposal objects carry attributes", f"keys {dict(obj_keys)}; will need trajectory-based matching")
+        rep.check(
+            WARN,
+            "proposal objects carry attributes",
+            f"keys {dict(obj_keys)}; will need trajectory-based matching",
+        )
     if expected_frames and n_frames and set(n_frames) != set(expected_frames):
-        rep.check(WARN, "proposal frame count matches annotation frame count", f"proposals {dict(n_frames)} vs annotations {dict(expected_frames)}")
+        rep.check(
+            WARN,
+            "proposal frame count matches annotation frame count",
+            f"proposals {dict(n_frames)} vs annotations {dict(expected_frames)}",
+        )
     elif expected_frames and n_frames:
         rep.check(PASS, "proposal frame count matches annotation frame count", str(dict(n_frames)))
 
@@ -350,17 +395,39 @@ def check_proposals(root: Path, rep: Report, n: int, rng: random.Random, expecte
 def verdict(rep: Report) -> None:
     status = {n: s for s, n, _ in rep.checks}
     rows = [
-        ("q_i sub-question from program", status.get("every train/val question has a program", FAIL), "program templates per module"),
-        ("a_i intermediate answer", WARN, "needs a program executor over annotations (port from chuangg/CLEVRER executor)"),
-        ("e_i box from proposals", status.get("proposal masks decode to 2D boxes", FAIL), "mask -> tight box, normalized"),
-        ("e_i frame span", status.get("collision events carry frame_id", FAIL), "collision frame_id; trajectory frame_id for object steps"),
-        ("d_i dependencies", status.get("every train/val question has a program", FAIL), "postfix program data flow"),
+        (
+            "q_i sub-question from program",
+            status.get("every train/val question has a program", FAIL),
+            "program templates per module",
+        ),
+        (
+            "a_i intermediate answer",
+            WARN,
+            "needs a program executor over annotations (port from chuangg/CLEVRER executor)",
+        ),
+        (
+            "e_i box from proposals",
+            status.get("proposal masks decode to 2D boxes", FAIL),
+            "mask -> tight box, normalized",
+        ),
+        (
+            "e_i frame span",
+            status.get("collision events carry frame_id", FAIL),
+            "collision frame_id; trajectory frame_id for object steps",
+        ),
+        (
+            "d_i dependencies",
+            status.get("every train/val question has a program", FAIL),
+            "postfix program data flow",
+        ),
     ]
     rep.section("Verdict: triplet field derivability", [f"{s:5s} {n:36s} {d}" for n, s, d in rows])
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Check CLEVRER on-disk format against triplet generator needs")
+    ap = argparse.ArgumentParser(
+        description="Check CLEVRER on-disk format against triplet generator needs"
+    )
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", choices=["train", "validation"], default="train")
     ap.add_argument("--n-videos", type=int, default=20)

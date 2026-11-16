@@ -25,7 +25,9 @@ from pathlib import Path
 COLORS = ["gray", "red", "blue", "green", "brown", "yellow", "cyan", "purple"]
 MATERIALS = ["metal", "rubber"]
 SHAPES = ["sphere", "cylinder", "cube"]
-END_FRAME = 127  # GT answers use the last frame (validated: 100% on motion questions vs 99.2% at 125)
+END_FRAME = (
+    127  # GT answers use the last frame (validated: 100% on motion questions vs 99.2% at 125)
+)
 N_FRAMES = 128
 
 
@@ -56,7 +58,10 @@ class Scene:
     @classmethod
     def from_annotation(cls, path: Path | str, moving_th: float = 0.02) -> Scene:
         a = json.loads(Path(path).read_text())
-        attrs = {o["object_id"]: {k: o[k] for k in ("color", "material", "shape")} for o in a["object_property"]}
+        attrs = {
+            o["object_id"]: {k: o[k] for k in ("color", "material", "shape")}
+            for o in a["object_property"]
+        }
         ids = sorted(attrs)
         traj = sorted(a["motion_trajectory"], key=lambda f: f["frame_id"])
         n = len(traj)

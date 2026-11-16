@@ -38,17 +38,37 @@ PLAIN_SYSTEM = (
 )
 
 
-def build_messages(rec: dict, frames, prompt_style: str, instr_in_user: bool = True, encoder=None) -> list[dict]:
+def build_messages(
+    rec: dict, frames, prompt_style: str, instr_in_user: bool = True, encoder=None
+) -> list[dict]:
     """`instr_in_user`: put the format instruction after the question in the user turn instead of a system
     prompt; small instruct models follow user-turn instructions far more reliably."""
     instr = SYSTEM_PROMPT if prompt_style == "chain" else PLAIN_SYSTEM
     if encoder is not None:
-        return encoder.messages(frames, rec["problem"] + "\n" + instr) if instr_in_user else encoder.messages(frames, rec["problem"], system=instr)
+        return (
+            encoder.messages(frames, rec["problem"] + "\n" + instr)
+            if instr_in_user
+            else encoder.messages(frames, rec["problem"], system=instr)
+        )
     if instr_in_user:
-        return [{"role": "user", "content": [{"type": "video", "video": frames}, {"type": "text", "text": rec["problem"] + "\n" + instr}]}]
+        return [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "video", "video": frames},
+                    {"type": "text", "text": rec["problem"] + "\n" + instr},
+                ],
+            }
+        ]
     return [
         {"role": "system", "content": instr},
-        {"role": "user", "content": [{"type": "video", "video": frames}, {"type": "text", "text": rec["problem"]}]},
+        {
+            "role": "user",
+            "content": [
+                {"type": "video", "video": frames},
+                {"type": "text", "text": rec["problem"]},
+            ],
+        },
     ]
 
 
@@ -62,8 +82,18 @@ class GRPOTrainer:
         self.cfg = cfg
         self.out = out
         out.mkdir(parents=True, exist_ok=True)
-        self.device = cfg.get("device") or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-        self.dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[cfg.get("dtype", "bfloat16")]
+        self.device = cfg.get("device") or (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
+        self.dtype = {
+            "bfloat16": torch.bfloat16,
+            "float16": torch.float16,
+            "float32": torch.float32,
+        }[cfg.get("dtype", "bfloat16")]
         self.enc = make_encoder(cfg["model"])
         model = self.enc.load_model(cfg["model"], self.dtype, cfg.get("attn", "sdpa"))
         self.processor = self.enc.processor
@@ -80,10 +110,18 @@ class GRPOTrainer:
         lora = cfg["lora"]
         self.model = get_peft_model(
             model,
-            LoraConfig(r=lora["r"], lora_alpha=lora["alpha"], lora_dropout=lora.get("dropout", 0.0), target_modules=lora.get("targets") or self.enc.lora_default_targets, task_type="CAUSAL_LM"),
+            LoraConfig(
+                r=lora["r"],
+                lora_alpha=lora["alpha"],
+                lora_dropout=lora.get("dropout", 0.0),
+                target_modules=lora.get("targets") or self.enc.lora_default_targets,
+                task_type="CAUSAL_LM",
+            ),
         ).to(self.device)
         self.model.print_trainable_parameters()
-        self.opt = torch.optim.AdamW([p for p in self.model.parameters() if p.requires_grad], lr=cfg["lr"], weight_decay=0.0)
+        self.opt = torch.optim.AdamW(
+            [p for p in self.model.parameters() if p.requires_grad], lr=cfg["lr"], weight_decay=0.0
+        )
         self.records = load_records(data_root / cfg["data_file"])
         self.data_root = data_root
         self.rewards = [(name, REWARDS.get(name), float(w)) for name, w in cfg["rewards"].items()]
@@ -94,7 +132,9 @@ class GRPOTrainer:
 
             root = os.environ.get("CS_PROPOSALS")
             if not root or not any(Path(root).glob("proposal_*.json")):
-                raise SystemExit(f"grounding_obj reward needs CS_PROPOSALS pointing at the derender proposals (got {root!r}); without it the reward is silently zero")
+                raise SystemExit(
+                    f"grounding_obj reward needs CS_PROPOSALS pointing at the derender proposals (got {root!r}); without it the reward is silently zero"
+                )
         self.rng = random.Random(cfg.get("seed", 0))
         self.order = list(range(len(self.records)))
         self.rng.shuffle(self.order)
@@ -109,7 +149,15 @@ class GRPOTrainer:
         import torch
 
         self.model.save_pretrained(self.out / "adapter")
-        torch.save({"step": self.step, "order": self.order, "rng": self.rng.getstate(), "opt": self.opt.state_dict()}, self.out / "trainer_state.pt")
+        torch.save(
+            {
+                "step": self.step,
+                "order": self.order,
+                "rng": self.rng.getstate(),
+                "opt": self.opt.state_dict(),
+            },
+            self.out / "trainer_state.pt",
+        )
         (self.out / "step.txt").write_text(str(self.step))
 
     def _load_state(self) -> None:
@@ -122,7 +170,9 @@ class GRPOTrainer:
             print("no checkpoint to resume from; starting fresh")
             return
         st = torch.load(st_path, map_location="cpu", weights_only=False)
-        set_peft_model_state_dict(self.model, load_file(self.out / "adapter" / "adapter_model.safetensors"))
+        set_peft_model_state_dict(
+            self.model, load_file(self.out / "adapter" / "adapter_model.safetensors")
+        )
         self.opt.load_state_dict(st["opt"])
         self.step, self.order = st["step"], st["order"]
         self.rng.setstate(st["rng"])
@@ -131,7 +181,13 @@ class GRPOTrainer:
     # ---------------------------------------------------------------- core
 
     def _inputs(self, rec: dict, frames):
-        messages = build_messages(rec, frames, self.cfg.get("prompt_style", "plain"), self.cfg.get("instr_in_user", True), encoder=self.enc)
+        messages = build_messages(
+            rec,
+            frames,
+            self.cfg.get("prompt_style", "plain"),
+            self.cfg.get("instr_in_user", True),
+            encoder=self.enc,
+        )
         return self.enc.encode([self.enc.prompt_text(messages)], [frames], self.device)
 
     def _generate(self, inputs, g: int):
@@ -164,7 +220,7 @@ class GRPOTrainer:
         mask = torch.cat([prompt_mask, comp_mask], dim=1)
         kw = {"input_ids": ids, "attention_mask": mask, **self.enc.vision_kwargs(inputs, g)}
         ctx = self.model.disable_adapter() if not use_adapter else _nullcontext()
-        with ctx, (torch.no_grad() if not use_adapter else _nullcontext()):
+        with ctx, torch.no_grad() if not use_adapter else _nullcontext():
             logits = self.model(**kw).logits
         logits = logits[:, prompt_ids.shape[1] - 1 : -1, :].float()
         lp = torch.log_softmax(logits, dim=-1)
@@ -234,13 +290,19 @@ class GRPOTrainer:
         variants = ["\n".join(format_step(i, t) for i, t in enumerate(chain.triplets))]
         for i in range(len(chain.triplets)):
             sub = chain.without_step(i)
-            variants.append("\n".join(format_step(j, t) for j, t in enumerate(sub.triplets)) if sub.triplets else "")
+            variants.append(
+                "\n".join(format_step(j, t) for j, t in enumerate(sub.triplets))
+                if sub.triplets
+                else ""
+            )
         lps = self._gold_logprob(inputs, variants, rec["gold"])
         p_full = _m.exp(lps[0])
         deltas = [p_full - _m.exp(lp) for lp in lps[1:]]
         d, e, gam = self.nec_cfg["delta"], self.nec_cfg["eps"], self.nec_cfg["gamma"]
         # per-step credit for step-level advantages: +1 necessary, -gamma padding, 0 in between
-        self._last_nec_steps = {i: (1.0 if x > d else (-gam if x <= e else 0.0)) for i, x in enumerate(deltas)}
+        self._last_nec_steps = {
+            i: (1.0 if x > d else (-gam if x <= e else 0.0)) for i, x in enumerate(deltas)
+        }
         return score_from_deltas(deltas, d, e, gam)
 
     def train_step(self, rec: dict) -> dict:
@@ -268,14 +330,26 @@ class GRPOTrainer:
             idx = [round(i * (len(frames) - 1) / (nf - 1)) for i in range(nf)]
             nec_inputs = self._inputs(rec, [frames[i] for i in idx])
         step_credit = float(self.cfg.get("step_credit", 0.0))
-        step_scores: list[dict[int, float]] = [{} for _ in range(g)]  # completion -> triplet index -> weighted step reward
+        step_scores: list[dict[int, float]] = [
+            {} for _ in range(g)
+        ]  # completion -> triplet index -> weighted step reward
         for i, t in enumerate(texts):
             for name, fn, w in self.rewards:
-                v = self._necessity(nec_inputs, rec, t) if name == "necessity" else float(fn(t, rec))
+                v = (
+                    self._necessity(nec_inputs, rec, t)
+                    if name == "necessity"
+                    else float(fn(t, rec))
+                )
                 parts[name].append(v)
                 rewards[i] += w * v
                 if step_credit:
-                    per = self._last_nec_steps if name == "necessity" else grounding_obj_steps(t, rec) if name == "grounding_obj" else {}
+                    per = (
+                        self._last_nec_steps
+                        if name == "necessity"
+                        else grounding_obj_steps(t, rec)
+                        if name == "grounding_obj"
+                        else {}
+                    )
                     for k, val in per.items():
                         step_scores[i][k] = step_scores[i].get(k, 0.0) + w * val
         stats_common = {
@@ -337,7 +411,9 @@ class GRPOTrainer:
             total_kl += ((kl * mask).sum() / mask.sum().clamp(min=1)).detach().item()
         # the on-policy loss value is ~0 by construction (advantages are mean-centered); the gradient norm
         # is the informative number
-        grad_norm = torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.get("max_grad_norm", 1.0))
+        grad_norm = torch.nn.utils.clip_grad_norm_(
+            self.model.parameters(), self.cfg.get("max_grad_norm", 1.0)
+        )
         self.opt.step()
         self.model.eval()
         return {
@@ -356,11 +432,25 @@ class GRPOTrainer:
             rec = self.records[self.order[self.step]]
             stats = self.train_step(rec)
             self.step += 1
-            row = {"step": self.step, "problem_id": rec.get("problem_id"), "qtype": rec.get("question_type"), "sec": round(time.time() - t0, 1), **stats}
+            row = {
+                "step": self.step,
+                "problem_id": rec.get("problem_id"),
+                "qtype": rec.get("question_type"),
+                "sec": round(time.time() - t0, 1),
+                **stats,
+            }
             self.log.write(json.dumps(row) + "\n")
             self.log.flush()
             if self.step % self.cfg.get("log_every", 1) == 0:
-                print(json.dumps({k: (round(v, 4) if isinstance(v, float) else v) for k, v in row.items() if k != "sample"}))
+                print(
+                    json.dumps(
+                        {
+                            k: (round(v, 4) if isinstance(v, float) else v)
+                            for k, v in row.items()
+                            if k != "sample"
+                        }
+                    )
+                )
             if self.step % self.cfg.get("save_every", 50) == 0 or self.step == total:
                 self._save_state()
                 print(f"saved checkpoint at step {self.step}")
@@ -381,7 +471,12 @@ def main() -> None:
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--resume", action="store_true")
     ap.add_argument("--steps", type=int, default=None, help="override config steps (smoke tests)")
-    ap.add_argument("--data-file", type=Path, default=None, help="override config data_file (absolute path or relative to --data)")
+    ap.add_argument(
+        "--data-file",
+        type=Path,
+        default=None,
+        help="override config data_file (absolute path or relative to --data)",
+    )
     a = ap.parse_args()
     cfg = yaml.safe_load(a.config.read_text())
     if a.steps:

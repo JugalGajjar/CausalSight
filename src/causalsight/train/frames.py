@@ -49,16 +49,31 @@ def _extract(args: tuple[str, str, int, int]) -> tuple[str, int]:
     return video_path, len(frames)
 
 
-def run(rl: Path | None, per_type: int, sft: Path | None, sft_per_type: int, out: Path, n_frames: int, max_side: int, seed: int, workers: int) -> dict:
+def run(
+    rl: Path | None,
+    per_type: int,
+    sft: Path | None,
+    sft_per_type: int,
+    out: Path,
+    n_frames: int,
+    max_side: int,
+    seed: int,
+    workers: int,
+) -> dict:
     rng = random.Random(seed)
     out.mkdir(parents=True, exist_ok=True)
     rl_sub: list[dict] = []
     sft_sub: list[dict] = []
     if rl:
-        rl_sub = stratified([json.loads(line) for line in rl.open()], lambda r: r["question_type"], per_type, rng)
+        rl_sub = stratified(
+            [json.loads(line) for line in rl.open()], lambda r: r["question_type"], per_type, rng
+        )
     if sft:
         # descriptive: balance subtypes; MC: balance yes/no per type (per-option chains are ~50/50 anyway)
-        key = lambda r: (r["question_type"], r["subtype"] if r["question_type"] == "descriptive" else r["gold"])
+        key = lambda r: (
+            r["question_type"],
+            r["subtype"] if r["question_type"] == "descriptive" else r["gold"],
+        )
         sft_sub = stratified([json.loads(line) for line in sft.open()], key, sft_per_type, rng)
     videos = sorted({r["path"] for r in rl_sub + sft_sub})
     jobs = [(v, str(out / "frames" / Path(v).stem), n_frames, max_side) for v in videos]
@@ -81,14 +96,28 @@ def run(rl: Path | None, per_type: int, sft: Path | None, sft_per_type: int, out
         "videos": len(videos),
         "rl": dict(Counter(r["question_type"] for r in rl_sub)),
         "sft": dict(Counter(r["question_type"] for r in sft_sub)),
-        "sft_answers": dict(Counter((r["question_type"], r["gold"]) for r in sft_sub).most_common(12)) if sft_sub else {},
+        "sft_answers": dict(
+            Counter((r["question_type"], r["gold"]) for r in sft_sub).most_common(12)
+        )
+        if sft_sub
+        else {},
     }
     manifest["sft_answers"] = {f"{k[0]}:{k[1]}": v for k, v in manifest["sft_answers"].items()}
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
 
 
-def build_eval_pack(root: Path, split: str, chains: Path, per_type: int, seed: int, out: Path, n_frames: int, max_side: int, workers: int) -> dict:
+def build_eval_pack(
+    root: Path,
+    split: str,
+    chains: Path,
+    per_type: int,
+    seed: int,
+    out: Path,
+    n_frames: int,
+    max_side: int,
+    workers: int,
+) -> dict:
     """Everything the harness needs to evaluate on a GPU box without videos: the questions file, frames for
     the stratified evaluation subset's videos, their derender proposals (track masking), and the chains
     file (evidence regions). Selection reproduces `cs-eval --chains ... --per-type --seed`."""
@@ -109,11 +138,21 @@ def build_eval_pack(root: Path, split: str, chains: Path, per_type: int, seed: i
     (out / "derender_proposals").mkdir(exist_ok=True)
     for v in videos:
         scene = int(Path(v).stem.split("_")[1])
-        shutil.copy(root / "derender_proposals" / f"proposal_{scene:05d}.json", out / "derender_proposals" / f"proposal_{scene:05d}.json")
+        shutil.copy(
+            root / "derender_proposals" / f"proposal_{scene:05d}.json",
+            out / "derender_proposals" / f"proposal_{scene:05d}.json",
+        )
     jobs = [(v, str(out / "frames" / Path(v).stem), n_frames, max_side) for v in videos]
     with ProcessPoolExecutor(max_workers=workers) as ex:
         list(ex.map(_extract, jobs))
-    manifest = {"split": split, "per_type": per_type, "seed": seed, "items": len(items), "videos": len(videos), "n_frames": n_frames}
+    manifest = {
+        "split": split,
+        "per_type": per_type,
+        "seed": seed,
+        "items": len(items),
+        "videos": len(videos),
+        "n_frames": n_frames,
+    }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
 
@@ -130,15 +169,32 @@ def build_causalvqa_pack(root: Path, out: Path, n_frames: int, max_side: int, wo
     shutil.copy(src / "debug_metadata.csv", dst / "debug_metadata.csv")
     with (src / "debug_metadata.csv").open(newline="") as f:
         videos = sorted({row["renamed_video"] for row in csv.DictReader(f)})
-    jobs = [(str(src / "videos" / v), str(out / "frames" / Path(v).stem), n_frames, max_side) for v in videos]
+    jobs = [
+        (str(src / "videos" / v), str(out / "frames" / Path(v).stem), n_frames, max_side)
+        for v in videos
+    ]
     with ProcessPoolExecutor(max_workers=workers) as ex:
         list(ex.map(_extract, jobs))
-    manifest = {"benchmark": "causalvqa", "split": "debug", "videos": len(videos), "n_frames": n_frames, "max_side": max_side}
+    manifest = {
+        "benchmark": "causalvqa",
+        "split": "debug",
+        "videos": len(videos),
+        "n_frames": n_frames,
+        "max_side": max_side,
+    }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
 
 
-def build_nextqa_pack(root: Path, out: Path, pool: Path | None, val_ids: Path | None, n_frames: int, max_side: int, workers: int) -> dict:
+def build_nextqa_pack(
+    root: Path,
+    out: Path,
+    pool: Path | None,
+    val_ids: Path | None,
+    n_frames: int,
+    max_side: int,
+    workers: int,
+) -> dict:
     """Frames for the NExT-QA training pool videos and/or the validation subset's videos, plus the
     annotation files, laid out for `cs-eval --bench nextqa --root <out> --frames-dir <out>` and for the
     pseudo-labeling pipeline. Video stems are the NExT-QA video ids."""
@@ -149,7 +205,9 @@ def build_nextqa_pack(root: Path, out: Path, pool: Path | None, val_ids: Path | 
     vidmap = load_vidmap(root)
     (out / "repo" / "dataset" / "nextqa").mkdir(parents=True, exist_ok=True)
     for f in ("val.csv", "map_vid_vidorID.json"):
-        shutil.copy(root / "repo" / "dataset" / "nextqa" / f, out / "repo" / "dataset" / "nextqa" / f)
+        shutil.copy(
+            root / "repo" / "dataset" / "nextqa" / f, out / "repo" / "dataset" / "nextqa" / f
+        )
     videos: set[str] = set()
     if pool:
         videos |= {json.loads(line)["video"] for line in pool.open()}
@@ -158,32 +216,57 @@ def build_nextqa_pack(root: Path, out: Path, pool: Path | None, val_ids: Path | 
         ids = set(json.loads(val_ids.read_text()))
         videos |= {r["video"] for r in load_rows(root, "val") if f"{r['video']}_{r['qid']}" in ids}
         shutil.copy(val_ids, out / val_ids.name)
-    jobs = [(str(video_path(root, v, vidmap)), str(out / "frames" / v), n_frames, max_side) for v in sorted(videos)]
+    jobs = [
+        (str(video_path(root, v, vidmap)), str(out / "frames" / v), n_frames, max_side)
+        for v in sorted(videos)
+    ]
     done = 0
     with ProcessPoolExecutor(max_workers=workers) as ex:
         for _ in ex.map(_extract, jobs):
             done += 1
             if done % 250 == 0:
                 print(f"  extracted {done}/{len(jobs)}", flush=True)
-    manifest = {"benchmark": "nextqa", "videos": len(videos), "n_frames": n_frames, "max_side": max_side}
+    manifest = {
+        "benchmark": "nextqa",
+        "videos": len(videos),
+        "n_frames": n_frames,
+        "max_side": max_side,
+    }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--eval-pack", action="store_true", help="build a CLEVRER evaluation pack instead of training frames")
-    ap.add_argument("--nextqa-pack", action="store_true", help="build the NExT-QA frames pack (train pool + val subset)")
+    ap.add_argument(
+        "--eval-pack",
+        action="store_true",
+        help="build a CLEVRER evaluation pack instead of training frames",
+    )
+    ap.add_argument(
+        "--nextqa-pack",
+        action="store_true",
+        help="build the NExT-QA frames pack (train pool + val subset)",
+    )
     ap.add_argument("--pool", type=Path, default=None)
     ap.add_argument("--val-ids", type=Path, default=None)
-    ap.add_argument("--causalvqa-pack", action="store_true", help="build the CausalVQA debug-split evaluation pack")
+    ap.add_argument(
+        "--causalvqa-pack",
+        action="store_true",
+        help="build the CausalVQA debug-split evaluation pack",
+    )
     ap.add_argument("--root", type=Path, default=Path("data/raw/clevrer"))
     ap.add_argument("--split", default="validation")
     ap.add_argument("--chains", type=Path, default=None)
     ap.add_argument("--rl", type=Path, default=None)
     ap.add_argument("--per-type", type=int, default=375)
     ap.add_argument("--sft", type=Path, default=None)
-    ap.add_argument("--sft-per-type", type=int, default=800, help="per (descriptive subtype) or (MC type, yes/no) group")
+    ap.add_argument(
+        "--sft-per-type",
+        type=int,
+        default=800,
+        help="per (descriptive subtype) or (MC type, yes/no) group",
+    )
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--n-frames", type=int, default=16)
     ap.add_argument("--max-side", type=int, default=480)
@@ -193,21 +276,33 @@ def main() -> None:
     if a.nextqa_pack:
         m = build_nextqa_pack(a.root, a.out, a.pool, a.val_ids, a.n_frames, a.max_side, a.workers)
         print(json.dumps(m, indent=2))
-        print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+        print(
+            f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive"
+        )
         return
     if a.causalvqa_pack:
         m = build_causalvqa_pack(a.root, a.out, a.n_frames, a.max_side, a.workers)
         print(json.dumps(m, indent=2))
-        print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+        print(
+            f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive"
+        )
         return
     if a.eval_pack:
-        m = build_eval_pack(a.root, a.split, a.chains, a.per_type, a.seed, a.out, a.n_frames, a.max_side, a.workers)
+        m = build_eval_pack(
+            a.root, a.split, a.chains, a.per_type, a.seed, a.out, a.n_frames, a.max_side, a.workers
+        )
         print(json.dumps(m, indent=2))
-        print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+        print(
+            f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive"
+        )
         return
-    m = run(a.rl, a.per_type, a.sft, a.sft_per_type, a.out, a.n_frames, a.max_side, a.seed, a.workers)
+    m = run(
+        a.rl, a.per_type, a.sft, a.sft_per_type, a.out, a.n_frames, a.max_side, a.seed, a.workers
+    )
     print(json.dumps(m, indent=2))
-    print(f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive")
+    print(
+        f"now: cd {a.out.parent} && zip -qr {a.out.name}.zip {a.out.name}   # then upload to Drive"
+    )
 
 
 if __name__ == "__main__":

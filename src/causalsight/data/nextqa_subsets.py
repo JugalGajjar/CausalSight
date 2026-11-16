@@ -23,7 +23,9 @@ def main() -> None:
     ap.add_argument("--root", type=Path, default=Path("data/raw/nextqa"))
     ap.add_argument("--out", type=Path, default=Path("data/subsets"))
     ap.add_argument("--train-videos", type=int, default=1500)
-    ap.add_argument("--per-family", type=int, default=2200, help="cap per family in the training pool")
+    ap.add_argument(
+        "--per-family", type=int, default=2200, help="cap per family in the training pool"
+    )
     ap.add_argument("--val-questions", type=int, default=1000)
     ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
@@ -44,7 +46,16 @@ def main() -> None:
     a.out.mkdir(parents=True, exist_ok=True)
     with (a.out / "nextqa_train_pool.jsonl").open("w") as f:
         for r in pool:
-            rec = {"problem_id": f"nq_{r['video']}_{r['qid']}", "video": r["video"], "path": str(video_path(a.root, r["video"], vidmap)), "question": r["question"], "options": [r[f"a{i}"] for i in range(5)], "answer_idx": int(r["answer"]), "type_code": r["type"], "family": FAMILY[r["type"]]}
+            rec = {
+                "problem_id": f"nq_{r['video']}_{r['qid']}",
+                "video": r["video"],
+                "path": str(video_path(a.root, r["video"], vidmap)),
+                "question": r["question"],
+                "options": [r[f"a{i}"] for i in range(5)],
+                "answer_idx": int(r["answer"]),
+                "type_code": r["type"],
+                "family": FAMILY[r["type"]],
+            }
             f.write(json.dumps(rec) + "\n")
     val = load_rows(a.root, "val")
     vf: dict[str, list[dict]] = defaultdict(list)
@@ -56,8 +67,14 @@ def main() -> None:
         rng.shuffle(rs)
         ids.extend(f"{r['video']}_{r['qid']}" for r in rs[:k])
     (a.out / "nextqa_val_ids.json").write_text(json.dumps(sorted(ids)))
-    print("train pool:", len(pool), dict(Counter(r["family"] for r in [{"family": FAMILY[r["type"]]} for r in pool])), "| videos:", len({r["video"] for r in pool}))
-    print("val ids:", len(ids), "| videos:", len({i.rsplit('_', 1)[0] for i in ids}))
+    print(
+        "train pool:",
+        len(pool),
+        dict(Counter(r["family"] for r in [{"family": FAMILY[r["type"]]} for r in pool])),
+        "| videos:",
+        len({r["video"] for r in pool}),
+    )
+    print("val ids:", len(ids), "| videos:", len({i.rsplit("_", 1)[0] for i in ids}))
 
 
 if __name__ == "__main__":

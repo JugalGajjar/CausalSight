@@ -23,11 +23,32 @@ def test_parse_letters():
 def fake_clevrer(tmp_path: Path) -> Path:
     root = tmp_path / "clevrer"
     (root / "questions").mkdir(parents=True)
-    qs = [{"scene_index": 10000, "video_filename": "video_10000.mp4", "questions": [
-        {"question_id": 0, "question": "How many spheres?", "question_type": "descriptive", "question_subtype": "count", "program": [], "answer": "2"},
-        {"question_id": 1, "question": "Which will happen?", "question_type": "predictive", "program": [],
-         "choices": [{"choice_id": 0, "choice": "x", "program": [], "answer": "correct"}, {"choice_id": 1, "choice": "y", "program": [], "answer": "wrong"}]},
-    ]}]
+    qs = [
+        {
+            "scene_index": 10000,
+            "video_filename": "video_10000.mp4",
+            "questions": [
+                {
+                    "question_id": 0,
+                    "question": "How many spheres?",
+                    "question_type": "descriptive",
+                    "question_subtype": "count",
+                    "program": [],
+                    "answer": "2",
+                },
+                {
+                    "question_id": 1,
+                    "question": "Which will happen?",
+                    "question_type": "predictive",
+                    "program": [],
+                    "choices": [
+                        {"choice_id": 0, "choice": "x", "program": [], "answer": "correct"},
+                        {"choice_id": 1, "choice": "y", "program": [], "answer": "wrong"},
+                    ],
+                },
+            ],
+        }
+    ]
     (root / "questions" / "validation.json").write_text(json.dumps(qs))
     return root
 
@@ -35,7 +56,16 @@ def fake_clevrer(tmp_path: Path) -> Path:
 def test_exist_prompt_and_numeric_fallback(tmp_path):
     root = fake_clevrer(tmp_path)
     qs = json.loads((root / "questions" / "validation.json").read_text())
-    qs[0]["questions"].append({"question_id": 2, "question": "Are there any cubes?", "question_type": "descriptive", "question_subtype": "exist", "program": [], "answer": "no"})
+    qs[0]["questions"].append(
+        {
+            "question_id": 2,
+            "question": "Are there any cubes?",
+            "question_type": "descriptive",
+            "question_subtype": "exist",
+            "program": [],
+            "answer": "no",
+        }
+    )
     (root / "questions" / "validation.json").write_text(json.dumps(qs))
     b = ClevrerBenchmark(root)
     it = list(b.items("validation"))[2]
@@ -113,9 +143,13 @@ def test_chain_metrics_grounding():
     m = chain_metrics(raw, gt)
     assert m["chain_ok"] == 1 and m["n_steps"] == 2
     assert m["ground_st"] == 0.0  # strict: step 1 is 2 frames off the GT span, so temporal IoU is 0
-    assert abs(m["ground_spatial"] - 0.5) < 1e-9  # tolerant: step 1 matches spatially within 8 frames, step 2 nothing
+    assert (
+        abs(m["ground_spatial"] - 0.5) < 1e-9
+    )  # tolerant: step 1 matches spatially within 8 frames, step 2 nothing
     assert abs(m["ground_recall"] - 0.5) < 1e-9
-    assert abs(m["t_offset"] - (2 + 36) / 2) < 1e-9  # step 2 at frame 50 is 36 frames from the GT span at 14
+    assert (
+        abs(m["t_offset"] - (2 + 36) / 2) < 1e-9
+    )  # step 2 at frame 50 is 36 frames from the GT span at 14
     assert chain_metrics("no chain", gt) == {"chain_ok": 0, "n_steps": 0}
 
 
@@ -154,19 +188,33 @@ def test_per_option_mode_items_and_summary(tmp_path):
     b = ClevrerBenchmark(fake_clevrer(tmp_path), mc_mode="option")
     items = list(b.items("validation"))
     assert [i.question_type for i in items] == ["descriptive", "predictive", "predictive"]
-    assert items[1].prompt.endswith("Is this option correct? Answer yes or no.") and items[1].gold == "yes" and items[2].gold == "no"
+    assert (
+        items[1].prompt.endswith("Is this option correct? Answer yes or no.")
+        and items[1].gold == "yes"
+        and items[2].gold == "no"
+    )
     rows = []
-    for it, pred in zip(items, ["2", "yes", "1"]):  # "1" on a yes/no option maps to yes -> wrong for option B
+    for it, pred in zip(
+        items, ["2", "yes", "1"]
+    ):  # "1" on a yes/no option maps to yes -> wrong for option B
         rows.append({"question_type": it.question_type, **it.meta, **b.score(it, pred)})
     s = b.summarize(rows)
-    assert s["predictive"]["per_option"] == 0.5 and s["predictive"]["per_question"] == 0.0 and s["predictive"]["n"] == 1
+    assert (
+        s["predictive"]["per_option"] == 0.5
+        and s["predictive"]["per_question"] == 0.0
+        and s["predictive"]["n"] == 1
+    )
 
 
 def test_stratified_sample_keeps_options_together():
     from causalsight.eval.benchmarks import Item
     from causalsight.eval.harness import stratified_sample
 
-    items = [Item(f"q{i}_{o}", "predictive", Path("x"), "", "", meta={"qid": f"q{i}"}) for i in range(6) for o in range(3)]
+    items = [
+        Item(f"q{i}_{o}", "predictive", Path("x"), "", "", meta={"qid": f"q{i}"})
+        for i in range(6)
+        for o in range(3)
+    ]
     s = stratified_sample(items, 2, seed=0, key=lambda it: it.meta["qid"])
     assert len(s) == 6 and len({it.meta["qid"] for it in s}) == 2
 
@@ -181,7 +229,9 @@ def test_resume_keeps_done_items_and_drops_truncated_line(tmp_path):
     out.write_text(lines[0] + "\n" + lines[1][: len(lines[1]) // 2])
     out.with_suffix(".summary.json").unlink()
     again = run("dummy", "clevrer", "validation", root, out, None, False, 16, resume=True)
-    assert again["n"] == full["n"] and [json.loads(l)["id"] for l in out.read_text().splitlines()] == [json.loads(l)["id"] for l in lines]
+    assert again["n"] == full["n"] and [
+        json.loads(l)["id"] for l in out.read_text().splitlines()
+    ] == [json.loads(l)["id"] for l in lines]
     assert out.with_suffix(".summary.json").exists()
     # with a summary present, resume is a no-op and the run starts over cleanly
     fresh = run("dummy", "clevrer", "validation", root, out, None, False, 16, resume=True)

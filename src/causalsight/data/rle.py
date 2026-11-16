@@ -48,7 +48,9 @@ def rle_to_mask(rle: dict) -> np.ndarray:
     return flat.reshape((w, h)).T  # Fortran order -> (h, w)
 
 
-def mask_to_box(mask: np.ndarray, normalized: bool = True) -> tuple[float, float, float, float] | None:
+def mask_to_box(
+    mask: np.ndarray, normalized: bool = True
+) -> tuple[float, float, float, float] | None:
     """Tight box around nonzero pixels as (x_min, y_min, x_max, y_max). None if the mask is empty.
 
     x_max / y_max are exclusive pixel edges so that a 1-pixel mask has positive area.

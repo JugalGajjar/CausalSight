@@ -62,10 +62,14 @@ def reparse(path: Path) -> None:
         for r in rows:
             f.write(json.dumps(r) + "\n")
     after = sum(bool(r["steps"]) for r in rows)
-    print(f"reparsed {len(rows)} rows: parsed {before} -> {after}; mean steps {sum(len(r['steps']) for r in rows) / max(1, after):.2f}")
+    print(
+        f"reparsed {len(rows)} rows: parsed {before} -> {after}; mean steps {sum(len(r['steps']) for r in rows) / max(1, after):.2f}"
+    )
 
 
-def teach(pool: Path, frames_root: Path, out: Path, model: str, batch_size: int, limit: int | None) -> None:
+def teach(
+    pool: Path, frames_root: Path, out: Path, model: str, batch_size: int, limit: int | None
+) -> None:
     from causalsight.models.qwen_vl import QwenVLBackend
     from causalsight.train.data import load_frames
 
@@ -85,7 +89,14 @@ def teach(pool: Path, frames_root: Path, out: Path, model: str, batch_size: int,
             prompts = []
             for r in b:
                 opts = "\n".join(f"{LETTERS[i]}. {o}" for i, o in enumerate(r["options"]))
-                prompts.append(TEACHER_PROMPT.format(letter=LETTERS[r["answer_idx"]], correct=r["options"][r["answer_idx"]], question=r["question"], options=opts))
+                prompts.append(
+                    TEACHER_PROMPT.format(
+                        letter=LETTERS[r["answer_idx"]],
+                        correct=r["options"][r["answer_idx"]],
+                        question=r["question"],
+                        options=opts,
+                    )
+                )
             outs = be.generate_batch(frames, prompts, max_new_tokens=320)
             for r, o in zip(b, outs):
                 steps = parse_teacher(o)
@@ -97,7 +108,15 @@ def teach(pool: Path, frames_root: Path, out: Path, model: str, batch_size: int,
     print("teach done:", dict(stats))
 
 
-def ground(teach_path: Path, frames_root: Path, out_sft: Path, out_rl: Path, detector: str, threshold: float, seed: int) -> None:
+def ground(
+    teach_path: Path,
+    frames_root: Path,
+    out_sft: Path,
+    out_rl: Path,
+    detector: str,
+    threshold: float,
+    seed: int,
+) -> None:
     import torch
     from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
@@ -123,17 +142,29 @@ def ground(teach_path: Path, frames_root: Path, out_sft: Path, out_rl: Path, det
                 best = None
                 for f in (st["frame"], max(0, st["frame"] - 1), min(15, st["frame"] + 1)):
                     img = frames[f]
-                    inputs = proc(images=img, text=st["entity"].lower() + " .", return_tensors="pt").to(device)
+                    inputs = proc(
+                        images=img, text=st["entity"].lower() + " .", return_tensors="pt"
+                    ).to(device)
                     with torch.no_grad():
                         o = det(**inputs)
-                    res = proc.post_process_grounded_object_detection(o, inputs.input_ids, threshold=threshold, text_threshold=threshold, target_sizes=[img.size[::-1]])[0]
+                    res = proc.post_process_grounded_object_detection(
+                        o,
+                        inputs.input_ids,
+                        threshold=threshold,
+                        text_threshold=threshold,
+                        target_sizes=[img.size[::-1]],
+                    )[0]
                     if len(res["scores"]):
                         i = int(res["scores"].argmax())
                         sc = float(res["scores"][i])
                         if best is None or sc > best[0]:
                             x0, y0, x1, y1 = [float(v) for v in res["boxes"][i]]
                             W, H = img.size
-                            best = (sc, f, (max(0, x0 / W), max(0, y0 / H), min(1, x1 / W), min(1, y1 / H)))
+                            best = (
+                                sc,
+                                f,
+                                (max(0, x0 / W), max(0, y0 / H), min(1, x1 / W), min(1, y1 / H)),
+                            )
                 if best is None:
                     stats["step_undetected"] += 1
                     continue
@@ -142,7 +173,14 @@ def ground(teach_path: Path, frames_root: Path, out_sft: Path, out_rl: Path, det
                     stats["step_degenerate"] += 1
                     continue
                 stats["step_kept"] += 1
-                triplets.append(Triplet(question=f"Where is {st['entity']}?", answer=f"{st['entity']}: {st['observation']}", evidence=Evidence(f, f, box), role="observe"))
+                triplets.append(
+                    Triplet(
+                        question=f"Where is {st['entity']}?",
+                        answer=f"{st['entity']}: {st['observation']}",
+                        evidence=Evidence(f, f, box),
+                        role="observe",
+                    )
+                )
             if not triplets:
                 stats["chain_dropped"] += 1
                 continue
@@ -151,10 +189,60 @@ def ground(teach_path: Path, frames_root: Path, out_sft: Path, out_rl: Path, det
             wrong = rng.choice([i for i in range(5) if i != correct])
             for idx, gold in ((correct, "yes"), (wrong, "no")):
                 prompt = f"{r['question']}?\nOption {LETTERS[idx]}: {r['options'][idx]}\nIs this option correct? Answer yes or no."
-                chain = TripletChain(video_id=r["video"], question=prompt, triplets=triplets, final_answer=gold, question_type=r["family"], meta={"source": "nextqa", "problem_id": r["problem_id"], "option": idx})
+                chain = TripletChain(
+                    video_id=r["video"],
+                    question=prompt,
+                    triplets=triplets,
+                    final_answer=gold,
+                    question_type=r["family"],
+                    meta={"source": "nextqa", "problem_id": r["problem_id"], "option": idx},
+                )
                 pid = f"{r['problem_id']}_{idx}"
-                fs.write(json.dumps({"problem_id": pid, "data_type": "video", "path": r["path"], "frames": f"frames/{r['video']}", "question_type": r["family"], "subtype": r["type_code"], "problem": prompt, "response": format_chain(chain), "gold": gold, "chain": json.loads(chain.to_json()), "n_total_frames": 16}) + "\n")
-                fr.write(json.dumps({"problem_id": pid, "data_type": "video", "path": r["path"], "frames": f"frames/{r['video']}", "question_type": r["family"], "subtype": r["type_code"], "problem_type": "free-form", "problem": prompt, "options": [], "gold": gold, "solution": f"<answer>{gold}</answer>", "gt_chains": [{"question_type": r["family"], "final_answer": gold, "choice_id": idx, "triplets": json.loads(chain.to_json())["triplets"]}], "n_total_frames": 16}) + "\n")
+                fs.write(
+                    json.dumps(
+                        {
+                            "problem_id": pid,
+                            "data_type": "video",
+                            "path": r["path"],
+                            "frames": f"frames/{r['video']}",
+                            "question_type": r["family"],
+                            "subtype": r["type_code"],
+                            "problem": prompt,
+                            "response": format_chain(chain),
+                            "gold": gold,
+                            "chain": json.loads(chain.to_json()),
+                            "n_total_frames": 16,
+                        }
+                    )
+                    + "\n"
+                )
+                fr.write(
+                    json.dumps(
+                        {
+                            "problem_id": pid,
+                            "data_type": "video",
+                            "path": r["path"],
+                            "frames": f"frames/{r['video']}",
+                            "question_type": r["family"],
+                            "subtype": r["type_code"],
+                            "problem_type": "free-form",
+                            "problem": prompt,
+                            "options": [],
+                            "gold": gold,
+                            "solution": f"<answer>{gold}</answer>",
+                            "gt_chains": [
+                                {
+                                    "question_type": r["family"],
+                                    "final_answer": gold,
+                                    "choice_id": idx,
+                                    "triplets": json.loads(chain.to_json())["triplets"],
+                                }
+                            ],
+                            "n_total_frames": 16,
+                        }
+                    )
+                    + "\n"
+                )
             if stats["chain_kept"] % 200 == 0:
                 print(f"  {dict(stats)}", flush=True)
     print("ground done:", dict(stats))

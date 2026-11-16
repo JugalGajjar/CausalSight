@@ -23,7 +23,12 @@ def union_box(boxes: list[Box]) -> Box | None:
     boxes = [b for b in boxes if b is not None]
     if not boxes:
         return None
-    return (min(b[0] for b in boxes), min(b[1] for b in boxes), max(b[2] for b in boxes), max(b[3] for b in boxes))
+    return (
+        min(b[0] for b in boxes),
+        min(b[1] for b in boxes),
+        max(b[2] for b in boxes),
+        max(b[3] for b in boxes),
+    )
 
 
 @dataclass
@@ -66,7 +71,7 @@ class ProposalIndex:
         """
         key = (attrs["color"], attrs["material"], attrs["shape"])
         for d in range(tol + 1):
-            for f in ((frame - d, frame + d) if d else (frame,)):
+            for f in (frame - d, frame + d) if d else (frame,):
                 hit = self._frame(f).get(key)
                 if hit:
                     return hit[0], f
@@ -78,7 +83,11 @@ class ProposalIndex:
 
 
 def evidence_for_objects(
-    idx: ProposalIndex, attrs_list: list[dict[str, str]], frame: int, span: tuple[int, int] | None = None, tol: int = 3
+    idx: ProposalIndex,
+    attrs_list: list[dict[str, str]],
+    frame: int,
+    span: tuple[int, int] | None = None,
+    tol: int = 3,
 ) -> Evidence | None:
     """Union box of the given objects at `frame` (nearest detections), with span defaulting to [frame, frame]."""
     boxes = []

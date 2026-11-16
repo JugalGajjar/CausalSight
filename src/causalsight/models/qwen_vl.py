@@ -36,22 +36,40 @@ def resolve_init_adapters(adapter_dir: Path, explicit: str | None = None) -> lis
     for c in cands:
         if (c / "adapter_config.json").exists():
             return [c]
-    raise FileNotFoundError(f"{adapter_dir} was trained on top of {init}, which was not found (tried {[str(c) for c in cands]}); pass --init-adapter")
+    raise FileNotFoundError(
+        f"{adapter_dir} was trained on top of {init}, which was not found (tried {[str(c) for c in cands]}); pass --init-adapter"
+    )
 
 
-STOCK_BY_HIDDEN = {1536: "Qwen/Qwen2.5-VL-3B-Instruct", 2048: "Qwen/Qwen2.5-VL-3B-Instruct", 3584: "Qwen/Qwen2.5-VL-7B-Instruct", 5120: "Qwen/Qwen2.5-VL-32B-Instruct", 8192: "Qwen/Qwen2.5-VL-72B-Instruct"}
+STOCK_BY_HIDDEN = {
+    1536: "Qwen/Qwen2.5-VL-3B-Instruct",
+    2048: "Qwen/Qwen2.5-VL-3B-Instruct",
+    3584: "Qwen/Qwen2.5-VL-7B-Instruct",
+    5120: "Qwen/Qwen2.5-VL-32B-Instruct",
+    8192: "Qwen/Qwen2.5-VL-72B-Instruct",
+}
 
 
 def stock_processor_id(config) -> str:
     text_cfg = getattr(config, "text_config", config)
     hidden = getattr(text_cfg, "hidden_size", None)
     if hidden not in STOCK_BY_HIDDEN:
-        raise ValueError(f"unknown Qwen2.5-VL size (hidden_size={hidden}); add it to STOCK_BY_HIDDEN")
+        raise ValueError(
+            f"unknown Qwen2.5-VL size (hidden_size={hidden}); add it to STOCK_BY_HIDDEN"
+        )
     return STOCK_BY_HIDDEN[hidden]
 
 
 class QwenVLBackend(VLMBackend):
-    def __init__(self, model_id: str, device: str | None = None, dtype: str = "bfloat16", max_pixels: int | None = None, init_adapter: str | None = None, **_) -> None:
+    def __init__(
+        self,
+        model_id: str,
+        device: str | None = None,
+        dtype: str = "bfloat16",
+        max_pixels: int | None = None,
+        init_adapter: str | None = None,
+        **_,
+    ) -> None:
         """`max_pixels=None` builds video inputs exactly as the trainers do (480x320 frames -> 504x336,
         1,728 video tokens). Evaluations before 2026-09-20 used max_pixels=360*420 (-> 448x280, a different
         aspect ratio), which understated box grounding of trained models; pass it only to reproduce those."""
@@ -59,10 +77,24 @@ class QwenVLBackend(VLMBackend):
         from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
         self.name = model_id
-        self.device = device or ("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
-        torch_dtype = {"bfloat16": torch.bfloat16, "float16": torch.float16, "float32": torch.float32}[dtype]
+        self.device = device or (
+            "cuda"
+            if torch.cuda.is_available()
+            else "mps"
+            if torch.backends.mps.is_available()
+            else "cpu"
+        )
+        torch_dtype = {
+            "bfloat16": torch.bfloat16,
+            "float16": torch.float16,
+            "float32": torch.float32,
+        }[dtype]
         adapter = Path(model_id) / "adapter_config.json"
-        base_id = json.loads(adapter.read_text())["base_model_name_or_path"] if adapter.exists() else model_id
+        base_id = (
+            json.loads(adapter.read_text())["base_model_name_or_path"]
+            if adapter.exists()
+            else model_id
+        )
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(base_id, torch_dtype=torch_dtype)
         if adapter.exists():
             from peft import PeftModel
@@ -90,7 +122,13 @@ class QwenVLBackend(VLMBackend):
     def generate(self, frames: list[Image.Image], prompt: str, max_new_tokens: int = 64) -> str:
         return self.generate_batch([frames], [prompt], max_new_tokens)[0]
 
-    def generate_batch(self, frames_list: list[list[Image.Image]], prompts: list[str], max_new_tokens: int = 64, temperature: float = 0.0) -> list[str]:
+    def generate_batch(
+        self,
+        frames_list: list[list[Image.Image]],
+        prompts: list[str],
+        max_new_tokens: int = 64,
+        temperature: float = 0.0,
+    ) -> list[str]:
         """Decoding for a batch of (video, prompt) pairs in one generate call (left-padded). Greedy unless
         `temperature` > 0."""
         import torch
@@ -99,17 +137,31 @@ class QwenVLBackend(VLMBackend):
         texts, videos = [], []
         for frames, prompt in zip(frames_list, prompts):
             msgs = self._messages(frames, prompt)
-            texts.append(self.processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
+            texts.append(
+                self.processor.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+            )
             _imgs, vids = process_vision_info(msgs)
             videos.extend(vids)
-        inputs = self.processor(text=texts, videos=videos, padding=True, return_tensors="pt").to(self.device)
+        inputs = self.processor(text=texts, videos=videos, padding=True, return_tensors="pt").to(
+            self.device
+        )
         with torch.no_grad():
-            kw = {"do_sample": True, "temperature": temperature, "top_p": 1.0, "top_k": 0} if temperature > 0 else {"do_sample": False}
+            kw = (
+                {"do_sample": True, "temperature": temperature, "top_p": 1.0, "top_k": 0}
+                if temperature > 0
+                else {"do_sample": False}
+            )
             # pin every decoding setting: published checkpoints ship generation_config.json files
             # (beam search, penalties, sampling) that must not leak into a comparison
             out = self.model.generate(
-                **inputs, max_new_tokens=max_new_tokens, pad_token_id=self.processor.tokenizer.pad_token_id,
-                num_beams=1, repetition_penalty=1.0, length_penalty=1.0, use_cache=True, **kw,
+                **inputs,
+                max_new_tokens=max_new_tokens,
+                pad_token_id=self.processor.tokenizer.pad_token_id,
+                num_beams=1,
+                repetition_penalty=1.0,
+                length_penalty=1.0,
+                use_cache=True,
+                **kw,
             )
         out = out[:, inputs["input_ids"].shape[1] :]
         return [t.strip() for t in self.processor.batch_decode(out, skip_special_tokens=True)]

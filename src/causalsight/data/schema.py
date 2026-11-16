@@ -57,7 +57,9 @@ class Triplet:
     answer: str
     evidence: Evidence
     depends_on: tuple[int, ...] = ()
-    role: str | None = None  # generator landmark kind: resolve | enumerate | observe (None for model output)
+    role: str | None = (
+        None  # generator landmark kind: resolve | enumerate | observe (None for model output)
+    )
 
 
 @dataclass
@@ -66,7 +68,9 @@ class TripletChain:
     question: str
     triplets: list[Triplet]
     final_answer: str
-    question_type: str | None = None  # CLEVRER: descriptive / explanatory / predictive / counterfactual
+    question_type: str | None = (
+        None  # CLEVRER: descriptive / explanatory / predictive / counterfactual
+    )
     meta: dict = field(default_factory=dict)
 
     def validate(self) -> None:

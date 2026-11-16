@@ -42,13 +42,39 @@ def setup(tmp_path: Path):
     vdir.mkdir(parents=True)
     write_video(vdir / "video_10000.mp4")
     (root / "questions").mkdir()
-    qs = [{"scene_index": 10000, "video_filename": "video_10000.mp4", "questions": [
-        {"question_id": 0, "question": "How many spheres?", "question_type": "descriptive", "question_subtype": "count", "program": [], "answer": "0"}]}]
+    qs = [
+        {
+            "scene_index": 10000,
+            "video_filename": "video_10000.mp4",
+            "questions": [
+                {
+                    "question_id": 0,
+                    "question": "How many spheres?",
+                    "question_type": "descriptive",
+                    "question_subtype": "count",
+                    "program": [],
+                    "answer": "0",
+                }
+            ],
+        }
+    ]
     (root / "questions" / "validation.json").write_text(json.dumps(qs))
     chains = tmp_path / "chains.jsonl"
-    chain = {"video_id": "video_10000.mp4", "question": "q", "final_answer": "0", "question_type": "descriptive",
-             "meta": {"scene_index": 10000, "question_id": 0},
-             "triplets": [{"question": "w", "answer": "a", "depends_on": [], "evidence": {"t_start": 45, "t_end": 45, "box": [0.0, 0.0, 0.5, 0.5]}}]}
+    chain = {
+        "video_id": "video_10000.mp4",
+        "question": "q",
+        "final_answer": "0",
+        "question_type": "descriptive",
+        "meta": {"scene_index": 10000, "question_id": 0},
+        "triplets": [
+            {
+                "question": "w",
+                "answer": "a",
+                "depends_on": [],
+                "evidence": {"t_start": 45, "t_end": 45, "box": [0.0, 0.0, 0.5, 0.5]},
+            }
+        ],
+    }
     chains.write_text(json.dumps(chain) + "\n")
     return root, chains
 
@@ -74,11 +100,25 @@ def test_plain_with_chains_does_not_mask_but_evidence_mode_does(tmp_path, monkey
 
     run("p", "clevrer", "validation", root, None, None, False, 16, mask="none", chains=chains)
     run("e", "clevrer", "validation", root, None, None, False, 16, mask="evidence", chains=chains)
-    run("r", "clevrer", "validation", root, None, None, False, 16, mask="random", chains=chains, seed=3)
+    run(
+        "r",
+        "clevrer",
+        "validation",
+        root,
+        None,
+        None,
+        False,
+        16,
+        mask="random",
+        chains=chains,
+        seed=3,
+    )
     assert dark_pixels(backends["p"].frames[0]) == 0
     # span [45,45] with tolerance 4 touches sampled frames 42 only (42..51 -> |45-42|=3, |51-45|=6)
     assert span_tolerance(128, 16) == 4
     assert dark_pixels(backends["e"].frames[0]) == 1
     assert dark_pixels(backends["r"].frames[0]) == 1
     e_frame = np.asarray(backends["e"].frames[0][5])  # sampled index 5 -> original frame 42
-    assert e_frame[0, 0, 0] < 50 and e_frame[-1, -1, 0] > 200  # top-left box masked, bottom-right untouched
+    assert (
+        e_frame[0, 0, 0] < 50 and e_frame[-1, -1, 0] > 200
+    )  # top-left box masked, bottom-right untouched

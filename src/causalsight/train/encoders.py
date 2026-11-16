@@ -15,7 +15,15 @@ from PIL import Image
 
 class Encoder:
     model_type: str = "base"
-    lora_default_targets: ClassVar[list[str] | str] = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+    lora_default_targets: ClassVar[list[str] | str] = [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+    ]
 
     def __init__(self, model_id: str) -> None:
         self.model_id = model_id
@@ -25,7 +33,9 @@ class Encoder:
     def load_model(self, model_id: str, dtype, attn: str):
         raise NotImplementedError
 
-    def messages(self, frames: list[Image.Image], text: str, system: str | None = None) -> list[dict]:
+    def messages(
+        self, frames: list[Image.Image], text: str, system: str | None = None
+    ) -> list[dict]:
         content = [{"type": "video", "video": frames}, {"type": "text", "text": text}]
         msgs = [{"role": "user", "content": content}]
         if system:
@@ -39,10 +49,16 @@ class Encoder:
         """Processor inputs for already-templated texts and their videos (left-padded)."""
         raise NotImplementedError
 
-    def prompt_inputs(self, frames: list[Image.Image], text: str, device, system: str | None = None) -> dict:
-        return self.encode([self.prompt_text(self.messages(frames, text, system))], [frames], device)
+    def prompt_inputs(
+        self, frames: list[Image.Image], text: str, device, system: str | None = None
+    ) -> dict:
+        return self.encode(
+            [self.prompt_text(self.messages(frames, text, system))], [frames], device
+        )
 
-    def full_inputs(self, frames: list[Image.Image], text: str, response: str, device, system: str | None = None) -> tuple[dict, int]:
+    def full_inputs(
+        self, frames: list[Image.Image], text: str, response: str, device, system: str | None = None
+    ) -> tuple[dict, int]:
         """Inputs for prompt+response+eos and the prompt length in tokens (prefix is identical)."""
         pt = self.prompt_text(self.messages(frames, text, system))
         full = self.encode([pt + response + self.tokenizer.eos_token], [frames], device)
@@ -60,7 +76,9 @@ class QwenEncoder(Encoder):
     def load_model(self, model_id: str, dtype, attn: str):
         from transformers import AutoProcessor, Qwen2_5_VLForConditionalGeneration
 
-        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_id, dtype=dtype, attn_implementation=attn)
+        model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
+            model_id, dtype=dtype, attn_implementation=attn
+        )
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.tokenizer = self.processor.tokenizer
         self.tokenizer.padding_side = "left"
@@ -71,9 +89,13 @@ class QwenEncoder(Encoder):
 
         videos = []
         for f in frames_list:
-            _imgs, vids = process_vision_info([{"role": "user", "content": [{"type": "video", "video": f}]}])
+            _imgs, vids = process_vision_info(
+                [{"role": "user", "content": [{"type": "video", "video": f}]}]
+            )
             videos.extend(vids)
-        return self.processor(text=texts, videos=videos, padding=True, return_tensors="pt").to(device)
+        return self.processor(text=texts, videos=videos, padding=True, return_tensors="pt").to(
+            device
+        )
 
     def vision_kwargs(self, inputs, g):
         kw = {}
@@ -91,12 +113,16 @@ class InternVLEncoder(Encoder):
     system string is prepended to the user text."""
 
     model_type = "internvl"
-    lora_default_targets: ClassVar[str] = r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)"
+    lora_default_targets: ClassVar[str] = (
+        r".*language_model.*\.(q_proj|k_proj|v_proj|o_proj|gate_proj|up_proj|down_proj)"
+    )
 
     def load_model(self, model_id: str, dtype, attn: str):
         from transformers import AutoModelForImageTextToText, AutoProcessor
 
-        model = AutoModelForImageTextToText.from_pretrained(model_id, dtype=dtype, attn_implementation=attn)
+        model = AutoModelForImageTextToText.from_pretrained(
+            model_id, dtype=dtype, attn_implementation=attn
+        )
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.tokenizer = self.processor.tokenizer
         self.tokenizer.padding_side = "left"
@@ -105,10 +131,17 @@ class InternVLEncoder(Encoder):
     def messages(self, frames, text, system=None):
         if system:
             text = system + "\n" + text
-        return [{"role": "user", "content": [{"type": "video", "video": frames}, {"type": "text", "text": text}]}]
+        return [
+            {
+                "role": "user",
+                "content": [{"type": "video", "video": frames}, {"type": "text", "text": text}],
+            }
+        ]
 
     def encode(self, texts, frames_list, device):
-        return self.processor(text=texts, videos=frames_list, padding=True, return_tensors="pt").to(device)
+        return self.processor(text=texts, videos=frames_list, padding=True, return_tensors="pt").to(
+            device
+        )
 
     def vision_kwargs(self, inputs, g):
         pv = inputs["pixel_values"]
