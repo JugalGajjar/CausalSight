@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "causalsight"
 version = "0.0.1"
-description = "Step-level counterfactual rewards for faithful video reasoning in small VLMs"
+description = "Counterfactual tests of grounded reasoning chains in small video-language models"
 requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
