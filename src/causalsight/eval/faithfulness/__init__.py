@@ -1,7 +1,7 @@
-"""Faithfulness metrics (proposal Section 6.3).
+"""The counterfactual test suite, computed from saved per-item outputs of `cs-eval`.
 
-blind_gap          acc(video) - acc(blank clip)
-evidence_masking   flip rate when predicted evidence is masked, minus the random-mask control
-chain_consistency  judge predicts the answer from the chain alone; agreement with the model
-necessity_rate     fraction of steps with Delta_i > delta under a held-out verifier
+report   blind gap, gold-evidence gap, object-track gap, cite gap and entity-track gap, each a paired
+         difference in flip rates with a question-clustered bootstrap interval (`cs-faithfulness`)
+splits   the diagnostics needed to read a gap: by gold answer, by citation hit, control overlap,
+         video dependence, reverse flips, coverage, re-citation (`cs-faithfulness-splits`)
 """

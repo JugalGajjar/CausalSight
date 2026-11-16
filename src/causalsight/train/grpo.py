@@ -1,4 +1,4 @@
-"""Minimal single-GPU GRPO for Qwen2.5-VL with LoRA and pluggable rewards (proposal Sections 5.0 / 5.2).
+"""Minimal single-GPU GRPO for Qwen2.5-VL with LoRA and pluggable rewards.
 
   cs-grpo --config configs/stage0_grpo.yaml --data data/frames/train --out runs/stage0 [--resume]
 

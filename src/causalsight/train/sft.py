@@ -1,4 +1,4 @@
-"""Stage 1: triplet-chain SFT with the bridge loss (proposal Section 5.1).
+"""Stage 1: triplet-chain SFT with the bridge loss.
 
   cs-sft --config configs/stage1_sft.yaml --data data/frames/train --out runs/stage1 [--resume]
 

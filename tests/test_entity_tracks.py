@@ -8,7 +8,15 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-from causalsight.eval.entity_tracks import EntityTrackIndex, avoiding_random_regions, frames_hit, grid_position, item_entities, phrases_by_video, track_summary
+from causalsight.eval.entity_tracks import (
+    EntityTrackIndex,
+    avoiding_random_regions,
+    frames_hit,
+    grid_position,
+    item_entities,
+    phrases_by_video,
+    track_summary,
+)
 from causalsight.eval.faithfulness.report import report
 from causalsight.eval.masking import CHAIN_SCALE, mask_frames
 

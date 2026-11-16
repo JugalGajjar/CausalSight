@@ -1,4 +1,4 @@
-"""Evidence masking for the Evidence Sensitivity metric (proposal Section 6.3).
+"""Evidence masking: the interventions and size-matched controls behind every masking gap.
 
 Given sampled frames and a set of spatiotemporal evidence regions, black out each region on the
 frames whose original index falls inside its span. The random control places boxes of the same

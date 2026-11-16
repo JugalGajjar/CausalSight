@@ -1,4 +1,3 @@
-import random
 
 from causalsight.eval.cite_grounding import entity_of, frame_of, score, steps_of
 

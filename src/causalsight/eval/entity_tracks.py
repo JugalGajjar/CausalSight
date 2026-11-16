@@ -1,7 +1,8 @@
 """Entity tracks on real video, for the entity-track test (mask modes cite_track / cite_track_random).
 
 The self-citation test masks one box on a few frames. On real video the cited entity is usually visible on many
-frames, so a zero cite gap could mean "the citation is decorative" or "the entity is redundant". The entity-track
+frames, so a small cite gap has two readings: the answer does not depend on the cited box, or it does and the same
+entity is available on the other frames. The entity-track
 test removes the entity *wherever it is detected*: every entity a chain names ("Where is <entity>?") is re-detected
 with Grounding DINO on all 16 sampled frames, and the intervention blacks out every detection plus the cited boxes;
 the control blacks out boxes of the same sizes on the same frames at random positions that avoid the entity boxes.
@@ -24,11 +25,18 @@ import argparse
 import json
 import random
 from collections import defaultdict
+from collections.abc import Callable, Iterable
 from pathlib import Path
-from typing import Callable, Iterable
 
-from causalsight.eval.cite_grounding import N_FRAMES, entity_of, steps_of
-from causalsight.eval.masking import CHAIN_SCALE, EvidenceIndex, Region, _iou, sampled_frame_indices, span_tolerance
+from causalsight.eval.cite_grounding import N_FRAMES, steps_of
+from causalsight.eval.masking import (
+    CHAIN_SCALE,
+    EvidenceIndex,
+    Region,
+    _iou,
+    sampled_frame_indices,
+    span_tolerance,
+)
 
 Box = tuple[float, float, float, float]
 

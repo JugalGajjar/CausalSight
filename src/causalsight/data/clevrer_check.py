@@ -1,4 +1,4 @@
-"""CLEVRER annotation format checker (notes/PLAN.md, Day 2).
+"""CLEVRER annotation format checker.
 
 Discovers the actual on-disk structure of the questions file, the per-video annotations, and the
 derender proposals, then reports whether each field the triplet generator needs can be derived:

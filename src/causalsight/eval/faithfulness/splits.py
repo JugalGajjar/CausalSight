@@ -55,7 +55,15 @@ from pathlib import Path
 
 from causalsight.eval.cite_grounding import N_FRAMES, entity_of, frame_of
 from causalsight.eval.faithfulness.report import _ci, load
-from causalsight.eval.masking import CHAIN_SCALE, WHOLE_FRAME, EvidenceIndex, _iou, random_regions, sampled_frame_indices, span_tolerance
+from causalsight.eval.masking import (
+    CHAIN_SCALE,
+    WHOLE_FRAME,
+    EvidenceIndex,
+    _iou,
+    random_regions,
+    sampled_frame_indices,
+    span_tolerance,
+)
 from causalsight.train.format import parse_chain
 
 PAIRS = {"cite": ("mask_cite", "mask_cite_random"), "entity_track": ("mask_cite_track", "mask_cite_track_random"), "gold_evidence": ("mask_evidence", "mask_random"), "object_track": ("mask_track", "mask_track_random")}
@@ -337,7 +345,7 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
         if a in runs and b in runs:
             both = [i for i in ids if i in runs[a] and i in runs[b]]
             wrong = [i for i in both if not plain[i]["correct"]]
-            acc = lambda k: sum(runs[k][i]["correct"] for i in both) / len(both)
+            acc = lambda k, both=both: sum(runs[k][i]["correct"] for i in both) / len(both)
             sym[name] = {"n": len(both), "n_wrong": len(wrong),
                          "wrong_to_right": sum(runs[a][i]["correct"] for i in wrong) / len(wrong) if wrong else None,
                          "wrong_to_right_control": sum(runs[b][i]["correct"] for i in wrong) / len(wrong) if wrong else None,
@@ -415,7 +423,7 @@ def splits(dir_: Path, tag: str, tracks_path: Path | None = None, proposals: Pat
         for i in ids:
             vt = tracks.get(plain[i].get("frames_key") or i.split("_")[0], {})
             steps = [st for st in cited_steps(plain[i].get("raw", "")) if st[0]]
-            dets = [set(int(f) for f in vt.get(e, {})) for e in {st[0] for st in steps}]
+            dets = [{int(f) for f in vt.get(e, {})} for e in {st[0] for st in steps}]
             dets = [d for d in dets if d]
             if not dets:
                 continue

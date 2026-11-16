@@ -1,4 +1,4 @@
-"""Triplet chain schema (proposal Section 5.1).
+"""Triplet chain schema.
 
 A chain is a list of triplets tau_i = <q_i, a_i, e_i, d_i> followed by a final answer.
 Evidence e_i is spatiotemporal: a frame span plus a box in normalized [0, 1] coordinates.

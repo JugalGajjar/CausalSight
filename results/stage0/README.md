@@ -58,7 +58,7 @@ This is the pre-RL reference row for Stage 0. The same six conditions are run on
 ## Stage 0 result: outcome-only GRPO, balanced mix (run 2, `grpo3b_bal_*`)
 
 Training: 1,500 GRPO steps on 1,500 CLEVRER train questions (375 per type), G=8, LoRA r=64, 4.1 h on
-an A100 80GB (`notes/2026-09-13-stage0-run1.md`). The checkpoint answers with bare letters/words (no tags).
+an A100 80GB. The checkpoint answers with bare letters/words (no tags).
 
 | type | plain base -> GRPO | blind base -> GRPO | blind gap base -> GRPO | track gap base -> GRPO |
 |---|---|---|---|---|
@@ -96,7 +96,7 @@ on this setup under either data mix. Both GRPO checkpoints are more accurate on 
 more video-dependent (blind gaps grow on every type), and at least as evidence-dependent (track gaps
 hold or grow). Candidate reasons, not tested: LoRA + KL-to-base is a stronger regularizer than their
 full fine-tune; their baseline starts from VideoRFT-3B rather than the base model; different
-"inferential" split and per-option scoring; their evaluation prompt. Per the proposal's Stage 0 gate,
+"inferential" split and per-option scoring; their evaluation prompt. After this result,
 the project's framing changes from "reverse the collapse" to "does grounded-step RL match outcome-only
 accuracy while producing verifiable reasoning": the GRPO checkpoints emit bare answers, so grounding
 IoU, chain-answer consistency and necessity rate are undefined for them, and those are the metrics on

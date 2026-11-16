@@ -7,7 +7,14 @@ import numpy as np
 from PIL import Image
 
 from causalsight.eval.faithfulness.report import report
-from causalsight.eval.masking import CHAIN_SCALE, EvidenceIndex, mask_frames, random_regions, sampled_frame_indices, span_tolerance
+from causalsight.eval.masking import (
+    CHAIN_SCALE,
+    EvidenceIndex,
+    mask_frames,
+    random_regions,
+    sampled_frame_indices,
+    span_tolerance,
+)
 
 RAW = (
     "<think>\n[1] Q: Where is the man? | A: left | E: t=4-12 box=(0.100,0.200,0.400,0.600) | deps=\n"

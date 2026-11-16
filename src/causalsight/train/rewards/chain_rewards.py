@@ -2,7 +2,7 @@
 (record field `gt_chains`, attached by `cs-export attach-chains`). All return floats in [0, 1].
 
 grounding : mean over emitted steps of the best spatiotemporal IoU with any GT evidence region of the
-            question (R_ground, proposal Section 5.2). 0 if the chain does not parse.
+            question (R_ground). 0 if the chain does not parse.
 process   : order-aware matching (R_proc). Steps are matched to the best-scoring GT chain by
             similarity = answer-token Jaccard x (0.5 + 0.5 x evidence IoU) via a greedy assignment
             (Hungarian-equivalent for these small sets in practice), then a penalty is subtracted for

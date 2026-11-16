@@ -1,4 +1,4 @@
-"""Programmatic CLEVRER triplet generator (proposal Section 5.1, source 1).
+"""Programmatic CLEVRER triplet generator: exact grounded chains from the question programs.
 
 Runs each question program through the traced executor and turns the *entity-producing* steps into
 triplets; scalar steps (count, exist, query_*, belong_to, negate) fold into the final answer so no

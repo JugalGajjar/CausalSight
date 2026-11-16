@@ -84,7 +84,7 @@ class CausalVQABenchmark(Benchmark):
             by_q.setdefault(r["qid"], []).append(per_set[key])
             types[r["qid"]] = r["question_type"]
         # de-duplicate sets per question
-        by_q = {q: [per_set[f"{q}_1"] if f"{q}_1" in per_set else 0, per_set[f"{q}_2"] if f"{q}_2" in per_set else 0] for q in by_q}
+        by_q = {q: [per_set.get(f"{q}_1", 0), per_set.get(f"{q}_2", 0)] for q in by_q}
         for t in sorted(set(types.values())) + ["ALL"]:
             qs = [q for q in by_q if t == "ALL" or types[q] == t]
             sets = [v for q in qs for v in by_q[q]]

@@ -1,3 +1,3 @@
-"""CausalSight: step-level counterfactual rewards for faithful video reasoning in small VLMs."""
+"""CausalSight: counterfactual tests of grounded reasoning chains in small video-language models."""
 
 __version__ = "0.0.1"

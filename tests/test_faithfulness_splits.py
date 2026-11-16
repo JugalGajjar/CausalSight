@@ -3,7 +3,15 @@
 import json
 
 from causalsight.eval.cite_grounding import frame_of
-from causalsight.eval.faithfulness.splits import cited_steps, control_coverage, entities_in_text, hit_status, pooled, recite, splits
+from causalsight.eval.faithfulness.splits import (
+    cited_steps,
+    control_coverage,
+    entities_in_text,
+    hit_status,
+    pooled,
+    recite,
+    splits,
+)
 
 CH = lambda box, t="4-12", ent="the dog": f"<think>\n[1] Q: Where is {ent}? | A: {ent} | E: t={t} box=({box}) | deps=\n</think>\n<answer>yes</answer>"
 
@@ -64,8 +72,8 @@ def test_entities_in_text_and_control_replay(tmp_path):
 def test_pooled_keeps_questions_as_clusters(tmp_path):
     for tag, flips in (("a", {"q0_0"}), ("b", {"q0_0", "q1_0"})):
         ids = [f"q{i}_0" for i in range(4)]
-        mk = lambda fn: [{"id": i, "qid": i.split("_")[0], "question_type": "causal", "gold": "yes", "correct": fn(i), "raw": CH("0.100,0.200,0.400,0.600")} for i in ids]
-        for name, fn in (("plain", lambda i: 1), ("mask_cite", lambda i: 0 if i in flips else 1), ("mask_cite_random", lambda i: 1)):
+        mk = lambda fn, ids=ids: [{"id": i, "qid": i.split("_")[0], "question_type": "causal", "gold": "yes", "correct": fn(i), "raw": CH("0.100,0.200,0.400,0.600")} for i in ids]
+        for name, fn in (("plain", lambda i: 1), ("mask_cite", lambda i, flips=flips: 0 if i in flips else 1), ("mask_cite_random", lambda i: 1)):
             (tmp_path / f"{tag}_{name}.jsonl").write_text("\n".join(json.dumps(r) for r in mk(fn)) + "\n")
     r = pooled(tmp_path, ["a", "b"])
     assert r["cite"]["all"]["n_correct"] == 8 and abs(r["cite"]["all"]["gap"] - 3 / 8) < 1e-9 and r["cite"]["yes"]["n_correct"] == 8

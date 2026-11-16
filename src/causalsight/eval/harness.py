@@ -1,4 +1,4 @@
-"""Evaluation harness (notes/PLAN.md Phase B).
+"""Evaluation harness: one benchmark pass of one model under one input condition.
 
   cs-eval --model Qwen/Qwen2.5-VL-3B-Instruct --bench clevrer --split validation --limit 200 \
           --out results/zeroshot_qwen3b_clevrer.jsonl [--blind] [--max-frames 16]
@@ -37,7 +37,9 @@ from causalsight.train.grpo import PLAIN_SYSTEM
 
 INSTR = {"none": "", "plain": PLAIN_SYSTEM, "chain": SYSTEM_PROMPT}
 
-N_TOTAL_FRAMES = {"clevrer": 128, "causalvqa": 10_000, "nextqa": 10_000}  # causalvqa: no evidence regions; masking modes unused  # other benchmarks: masking modes are not supported (no evidence annotations)
+# Frame count that annotated evidence spans refer to. Only CLEVRER has evidence annotations; the other benchmarks
+# are masked through the cite modes, whose spans live on the chain grid (CHAIN_SCALE).
+N_TOTAL_FRAMES = {"clevrer": 128, "causalvqa": 10_000, "nextqa": 10_000}
 
 
 def chain_metrics(raw: str, gt_regions: list, iou_thr: float = 0.5, t_tol: int = 8) -> dict:

@@ -19,8 +19,8 @@ import json
 import random
 import re
 from collections import defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from causalsight.eval.masking import CHAIN_SCALE, _iou
 from causalsight.train.format import parse_chain

@@ -1,4 +1,4 @@
-"""Pseudo-labeled grounded chains for real video (NExT-QA), proposal Section 5.1 source 2.
+"""Pseudo-labelled grounded chains for real video (NExT-QA).
 
   cs-pseudolabel teach  --pool <pack>/nextqa_train_pool.jsonl --frames <pack> --out teach.jsonl
       Teacher (Qwen2.5-VL-7B) sees 16 frames, the question, the options and the correct option, and writes

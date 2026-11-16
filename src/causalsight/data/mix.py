@@ -1,4 +1,4 @@
-"""Assemble the real/synthetic training arms (proposal Section 5, mixed-data experiment).
+"""Assemble the CLEVRER / NExT-QA training arms of the mixed-data experiment.
 
   cs-mix --clevrer-sft <train pack>/sft_subset.jsonl --clevrer-rl <repo>/data/subsets/rl_balanced_1500_options.jsonl \
          --nextqa-sft <pseudo>/nextqa_sft.jsonl --nextqa-rl <pseudo>/nextqa_rl.jsonl \
