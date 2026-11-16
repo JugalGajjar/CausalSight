@@ -1,15 +1,27 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "causalsight"
-version = "0.0.1"
+version = "1.0.0"
 description = "Counterfactual tests of grounded reasoning chains in small video-language models"
 requires-python = ">=3.11"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Jugal Gajjar" },
+  { name = "Kamalasankari Subramaniakuppusamy" },
+]
+keywords = ["video-language models", "visual grounding", "faithfulness", "counterfactual evaluation", "chain-of-thought"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
 dependencies = [
   "numpy>=1.26",
+  "pillow>=10.0",
   "pyyaml>=6.0",
   "scipy>=1.11",
   "tqdm>=4.66",
@@ -27,12 +39,15 @@ ml = [
   "trl>=0.17",
   "peft>=0.13",
   "sentence-transformers>=3.0",
-  "pillow>=10.0",
 ]
 dev = [
   "pytest>=8.0",
   "ruff>=0.6",
+  "av>=12.0",  # the harness test writes and decodes a small video
 ]
+
+[project.urls]
+Repository = "https://github.com/JugalGajjar/CausalSight"
 
 [project.scripts]
 cs-eval = "causalsight.eval.harness:main"
