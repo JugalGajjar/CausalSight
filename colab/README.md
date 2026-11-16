@@ -1,9 +1,10 @@
 # Running on Colab (single GPU)
 
-Budget plan (A100 80GB, 44 h): Stage 0 GRPO 1,500 steps ~7 h, Stage 1 SFT ~4 h, Stage 2 CSR GRPO 1,500 steps ~9 h, one ablation (Stage 2 without R_nec) ~9 h, reserve ~15 h. Re-size step counts from the pilot's seconds/step.
-Evaluation is never run on Colab; checkpoints are downloaded and scored on the Mac.
+The run sheet used for the paper's runs: one A100 80GB, with data packs, checkpoints and results on a mounted
+Drive. Paths under `/content/drive/MyDrive/causalsight/` are examples; use your own. Size long runs from a
+20-step pilot, which prints seconds per step.
 
-## Once, on the Mac
+## Once, on a machine with the CLEVRER videos
 ```bash
 bash data/scripts/download_clevrer.sh --videos train        # ~12 GB, needed for training frames
 cs-frames --rl data/rl/clevrer_train_rl.jsonl --per-type 375 --sft data/sft/clevrer_train_sft.jsonl --sft-per-type 800 --out data/frames/train
@@ -15,10 +16,19 @@ Upload `train.zip` to Drive under `MyDrive/causalsight/`.
 A `!nohup ... &` cell can still block in Colab. Use this helper instead (define once per session):
 ```python
 import subprocess, os
+
+
 def bg(cmd, log):
     f = open(log, "a")
-    p = subprocess.Popen(cmd, shell=True, stdout=f, stderr=subprocess.STDOUT, cwd="/content/CausalSight",
-                         start_new_session=True, env={**os.environ, "PYTHONUNBUFFERED": "1"})
+    p = subprocess.Popen(
+        cmd,
+        shell=True,
+        stdout=f,
+        stderr=subprocess.STDOUT,
+        cwd="/content/CausalSight",
+        start_new_session=True,
+        env={**os.environ, "PYTHONUNBUFFERED": "1"},
+    )
     print("started pid", p.pid, "->", log)
 ```
 Then `bg("cs-grpo --config ... --out <dir>", "<dir>/console.txt")` returns immediately; check progress with
@@ -79,7 +89,6 @@ Upload `data/frames/evalpack.zip` (built once with `cs-frames --eval-pack ...`, 
 With RESULTS_DIR on Drive the results survive disconnects, and re-running the same command skips conditions that already finished.
 Chain models (SFT, CSR) use `MC=option chain 640`; bare-answer models (base, Stage 0 GRPO) use `MC=multi plain 384`.
 
-## After training, on the Mac
-Download `runs/stage0/adapter/` from Drive, then evaluate the merged model with the six Stage 0 conditions
-(`cs-eval --model <adapter dir>` support is in the backend: pass the adapter directory and the base model
-is loaded and merged automatically).
+## Evaluating an adapter anywhere
+Pass the adapter directory to `cs-eval --model <adapter dir>`: the base model is loaded and the adapter merged
+automatically, so a checkpoint directory copied from Drive is evaluated like a model id.

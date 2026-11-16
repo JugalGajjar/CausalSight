@@ -1,5 +1,19 @@
 # Results index (all matched preprocessing; CLEVRER = 1,000 stratified validation questions; CausalVQA = debug split; NExT-QA = 999-question val subset)
 
+These directories hold the result summaries of every run and the notes written as the experiments ran, in
+chronological order. The notes record the project as it developed, so early entries use earlier names and a
+framing that later results revised; the paper is the final reading. Names that changed:
+
+| In the notes | In the paper |
+|---|---|
+| ES gap, evidence-span gap | gold-evidence gap |
+| track gap | object-track gap |
+| cite-track gap | entity-track gap |
+| CSR | chain GRPO with grounding, necessity and process rewards |
+| obj_iou | box IoU against the named object |
+| Stage 0 / 1 / 2 | outcome-only GRPO / chain SFT / GRPO on chains |
+| mix, real, plain arms | mixed, NExT-QA chain and plain (chain-free) arms |
+
 * `stage0/` Qwen2.5-VL-3B base and outcome-only GRPO (balanced / natural mix); faithfulness suite.
 * `stage1/`, `stage2/` grounded-chain SFT, chain GRPO (3 seeds), CSR (2 seeds), step-credit variants, no-necessity ablation.
 * `baselines/` VideoRFT-3B, VideoThinker-R1-3B (Wu et al.), Video-R1-7B on our suite.

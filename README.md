@@ -145,11 +145,13 @@ cs-grpo --config configs/stage2_outcome_only.yaml --data <frames> --out runs/sta
 ```
 
 `configs/` holds one YAML per run in the paper. They were launched on Colab, so their data and adapter paths
-point at a mounted Drive; replace them with your own. `colab/README.md` is the run sheet that was used.
+point at a mounted Drive; replace them with your own. `configs/README.md` maps each config to its run and result
+tag, and `colab/README.md` is the run sheet that was used.
 
 ## Results
 
-`results/README.md` indexes the directories. `results/colab/` has the per-condition summaries and gap tables of
+`results/README.md` indexes the directories and lists the names that changed between the working notes and the
+paper. `results/colab/` has the per-condition summaries and gap tables of
 every run. File tags:
 
 | Tag | Model |
@@ -194,11 +196,14 @@ NExT-QA for the fixed subsets used here.
 
 ## Citation
 
+The arXiv identifier is to be updated once the preprint is posted.
+
 ```bibtex
 @misc{gajjar2026doesthemodel,
   title  = {Does the Model Use What It Cites? Counterfactual Tests of Grounded Reasoning Chains in Small Video-Language Models},
   author = {Gajjar, Jugal and Subramaniakuppusamy, Kamalasankari},
-  year   = {2026}
+  year   = {2026},
+  note   = {arXiv preprint, identifier to be updated}
 }
 ```
 

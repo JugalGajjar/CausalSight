@@ -93,14 +93,15 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    gold, 0.05 blind), which leaves 27% of questions with no "yes" at all (42% for GRPO balanced); the trained arms say
    "yes" more often (0.27-0.33; the mixed chain GRPO model leaves 9% of questions without a "yes" and gives two or more
    to 40%) and select the right option more often.
-7. **On synthetic video the answers depend on the cited evidence; on real video they do not** (tables below). On
+7. **On CLEVRER the answers depend on the cited boxes; on NExT-QA little depends on them** (tables below). On
    CLEVRER every chain model has a positive cite gap with a CI above zero (0.030-0.089): blacking out what the model
-   itself cited flips 2-3x more correct answers than blacking out boxes of the same size on the same frames, and the
-   gap is as large as the gold evidence-span gap (mixed chain SFT 0.089 vs 0.094, mixed chain GRPO 0.042 vs 0.067).
-   On NExT-QA the same models have cite gaps of 0.001-0.004 with CIs that include zero (mixed chain GRPO 0.042 on
+   itself cited flips about twice as many correct answers (1.8-2.4x) as blacking out boxes of the same size on the same frames, and the
+   gap is close to or below the gold evidence-span gap (mixed chain SFT 0.089 vs 0.094, mixed chain GRPO 0.042 vs 0.067).
+   On NExT-QA the same models have cite gaps of 0.001-0.004 with per-model CIs that include or touch zero (pooled over the five models 0.003
+   [0.001,0.005], see the pooled section; mixed chain GRPO 0.042 on
    CLEVRER vs 0.004 on NExT-QA), while blacking out the whole video still costs them 15-25 points. The real-video
-   citations are well formed and point at real regions, but the cited box is not necessary for the answer (see
-   item 8 and the splits below for what is: the cited entity, partly). The
+   citations are well formed and point at real regions, but little of the answer depends on the cited box (see
+   item 8 and the splits below for what more depends on: the cited entity). The
    CLEVRER-only chain GRPO model is the one model with a small real-video gap (0.015 [0.00,0.02]) on a 7%
    random-flip floor, and the cross-model control (-0.002) confirms the masking operation itself is neutral.
    Both halves replicate: the second mixed chain SFT seed has the same NExT-QA cite gap (0.003 [-0.00,0.01]),
@@ -118,14 +119,14 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
    of 0.44-0.49 for the same models. Pooled, nine in ten correct answers stand (94-95% under the control), but the pooled
    number is diluted by the 80% of items that are correct rejections: on the items whose option is correct the
    entity-track gap is 0.098 [0.069,0.127] and 0.109 [0.081,0.137] (flips 19.4% vs 9.6% and 16.7% vs 5.8%), against
-   blind flips of 21% and 34% on the same items. So the cited box is unnecessary, the cited entity is moderately
-   necessary, and "decorative" is too strong a word for the real-video citations. The remainder points at the supervision: pseudo-labelled chains (teacher steps plus detector boxes)
+   blind flips of 21% and 34% on the same items. So little depends on the cited box and more
+   depends on the cited entity. The remainder points at the supervision: pseudo-labelled chains (teacher steps plus detector boxes)
    taught the model to cite objects that are not the decisive evidence.
 9. **The real-video citations are not garbage: they land on the named object.** Re-detecting the entity each step
    names ("Where is the white dog?") with Grounding DINO on the cited frame (table below) finds it 87-93% of the
    time, and the cited box overlaps the detection with mean IoU 0.53-0.57 (hit@0.5 0.58-0.63), against 0.22-0.25
    (0.16-0.21) for a same-size box at a random position. So the chain cites the right object at the right place,
-   and that object is still not what decides the answer. The detector is the same family that produced the
+   while little of the answer depends on the cited box. The detector is the same family that produced the
    training boxes, so this measures agreement with the pseudo-label source, not ground truth; and the entities are
    the ones the model chose to name, which are not necessarily the question-relevant ones. One pseudo-label
    artifact is visible in the outputs: 20-30% of the mixed models' chains (14% for the real-only arms) cite one
@@ -162,13 +163,13 @@ CLEVRER (descriptive questions excluded from the gold split):
 | real chain GRPO | 0.021 [0.004,0.037] | 0.027 [0.008,0.046] | 0.078 [0.052,0.105] | 0.050 [0.023,0.077] | 0.4 | 0.45 / 0.77 |
 | InternVL3-2B chain GRPO | 0.055 [0.039,0.073] | 0.034 [0.018,0.052] | 0.084 [0.063,0.106] | 0.068 [0.048,0.086] | 0.5 | 0.58 / 0.83 |
 
-Reading: (a) the NExT-QA cite-gap null is not dilution by rejections (<= 0.012 on correct options) and not misplaced
+Reading: (a) the small NExT-QA cite gap is not dilution by rejections (<= 0.012 on correct options) and not misplaced
 boxes (<= 0.011 where every box hits); (b) the entity-track gap is concentrated on correct options (0.10-0.11); (c) on
-CLEVRER the cite gap is symmetric over correct and wrong options; (d) chain-free models need the gold evidence as much
+CLEVRER the cite gap is symmetric over correct and wrong options; (d) chain-free models depend on the gold evidence as much
 as chain models (gold-evidence gap: zero-shot base 0.063, outcome-only GRPO 0.097-0.119, plain mixed arms
-0.067-0.071), so a positive cite gap shows the chain cites pixels the model needs, not that the chain makes them
-needed; (e) under the cited-box mask the real-video models re-cite the same box in 14-17% of steps vs 52-55% under
-the random mask: the citation follows the pixels, the answer does not. Box IoU over seeds (rescored 2026-11-09):
+0.067-0.071), so a positive cite gap shows the chain cites pixels the answer depends on, not that the chain makes it
+depend on them; (e) under the cited-box mask the real-video models re-cite the same box in 14-17% of steps vs 52-55% under
+the random mask: the citation moves with the pixels while the answer mostly stays. Box IoU over seeds (rescored 2026-11-09):
 chain GRPO 0.654 / 0.665 / 0.660, CSR 0.668 / 0.666, CSR without necessity 0.637, step-level credit 0.3: 0.658.
 
 ## Pooled estimates, bounds and control overlap (added 2026-11-09)
@@ -365,8 +366,8 @@ RL the results index marks as diverged and does not report; its CLEVRER accuracy
 intact, so it is a valid chain model for this test, but it is not the lr 3e-6 model in the InternVL table
 (`ivl_chainrl2b_lr_*`, 0.783). Its largest per-type cite gap is predictive (0.108 [0.07,0.15]).
 Mask size does not explain the contrast: the cited boxes cover a larger share of the frames on NExT-QA (mean masked
-fraction 0.036-0.042 of pixel-frames for the real-data models) than on CLEVRER (0.004-0.024), yet only the CLEVRER
-masks move the answers.
+fraction 0.036-0.042 of pixel-frames for the real-data models) than on CLEVRER (0.004-0.024), yet the CLEVRER
+masks move the answers far more.
 
 ## Citation grounding on real video (`cs-cite-grounding`, NExT-QA plain runs)
 
@@ -387,4 +388,4 @@ Steps whose box covers the whole frame are dropped. The CLEVRER-only chain GRPO 
 
 Per question type the numbers are flat (causal IoU 0.53-0.55, descriptive 0.55-0.57, temporal 0.53-0.56). Chain GRPO
 raises detection and IoU by 1-2 points over its SFT on both arms. Together with the cite-gap table this gives the
-real-video picture: the model names a plausible entity, puts the box on it, and answers from elsewhere.
+real-video picture: the model names a plausible entity and puts the box on it, and little of its answer depends on that box.

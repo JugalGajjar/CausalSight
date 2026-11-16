@@ -24,7 +24,7 @@ av>=12.0
 pytest>=8.0
 ruff>=0.6
 
-# Linux/CUDA only. Install on the remote GPU host, not on the Mac:
+# Linux/CUDA only. Install on the GPU host, not on macOS:
 #   pip install deepspeed flash-attn --no-build-isolation
 #   pip install git+https://github.com/IDEA-Research/GroundingDINO.git
 #   pip install git+https://github.com/facebookresearch/sam2.git
