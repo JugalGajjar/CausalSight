@@ -9,7 +9,7 @@ derender proposals, then reports whether each field the triplet generator needs 
   e_i  frame span          <- collision `frame_id`, motion_trajectory `frame_id`
   d_i  dependencies        <- program data flow
 
-Usage: cs-clevrer-check --root data/raw/clevrer --split train --n-videos 20 --out results/clevrer_format_report.md
+Usage: cs-clevrer-check --root data/raw/clevrer --split train --n-videos 20 --out results/notes/clevrer_format_report.md
 """
 
 from __future__ import annotations
@@ -432,7 +432,7 @@ def main() -> None:
     ap.add_argument("--split", choices=["train", "validation"], default="train")
     ap.add_argument("--n-videos", type=int, default=20)
     ap.add_argument("--seed", type=int, default=0)
-    ap.add_argument("--out", type=Path, default=Path("results/clevrer_format_report.md"))
+    ap.add_argument("--out", type=Path, default=Path("results/notes/clevrer_format_report.md"))
     args = ap.parse_args()
 
     rng = random.Random(args.seed)

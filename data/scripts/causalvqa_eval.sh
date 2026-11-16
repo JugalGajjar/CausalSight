@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Real-video evaluation on the CausalVQA debug split: plain and blind conditions only (no evidence boxes).
-#   PACK=/content/data/causalvqa_pack RESULTS_DIR=<drive>/results_v2 BATCH=8 MC=multi \
+#   PACK=/content/data/causalvqa_pack RESULTS_DIR=<drive>/results BATCH=8 MC=multi \
 #     bash data/scripts/causalvqa_eval.sh <model> <tag> <instr> <max_new_tokens>
 set -euo pipefail
 MODEL="$1"; TAG="$2"; INSTR="${3:-none}"; MAXTOK="${4:-64}"
-MC="${MC:-multi}"; BATCH="${BATCH:-8}"; PACK="${PACK:?set PACK}"; OUT="${RESULTS_DIR:-results/causalvqa}"
+MC="${MC:-multi}"; BATCH="${BATCH:-8}"; PACK="${PACK:?set PACK}"; OUT="${RESULTS_DIR:-results/runs}"
 mkdir -p "$OUT"
 COMMON=(--bench causalvqa --split debug --root "$PACK" --frames-dir "$PACK" --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK" --mc "$MC" --batch-size "$BATCH")
 [ -f "$OUT/${TAG}_cvqa_plain.summary.json" ] || cs-eval "${COMMON[@]}" --out "$OUT/${TAG}_cvqa_plain.jsonl"

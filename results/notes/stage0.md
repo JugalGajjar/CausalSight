@@ -1,5 +1,10 @@
 # Stage 0 — zero-shot baseline, Qwen2.5-VL-3B-Instruct on CLEVRER validation
 
+> The numbers in this note come from the first evaluation pass. Every model was later re-evaluated with the
+> preprocessing used in training, and those summaries are the ones in `results/evals/` and in the paper; they
+> differ slightly (for example the base model's overall CLEVRER accuracy is 0.499 here and 0.490 there). The
+> files of the first pass are no longer in the repository.
+
 Pilot: 50 items per question type (200 total), 16 uniformly sampled frames, greedy decoding, run on
 an M4 Pro (MPS, ~2.9 s/item). Item set restricted to questions with generated evidence chains and
 identical across the four conditions (`--chains ... --per-type 50 --seed 0`).
@@ -7,10 +12,10 @@ identical across the four conditions (`--chains ... --per-type 50 --seed 0`).
 Conditions: plain; blind (all frames black); evidence-masked (GT evidence boxes blacked out on the
 sampled frames nearest each region's span); random-masked (same box sizes and spans, random positions).
 
-Faithfulness table: `qwen3b_pilot_faithfulness.md` (paired bootstrap 95% CIs).
+Gaps are reported with paired bootstrap 95% CIs.
 
 Full run (`qwen3b_*`, 250 per type, 1000 items; ~48 min per condition on the M4 Pro):
-`qwen3b_faithfulness.md`. Pilot (`qwen3b_pilot_*`, 50 per type) kept for reference.
+the reading below. The pilot had 50 items per type.
 
 Reading (1000 items):
 * Per-question plain: descriptive 0.728, explanatory 0.288, predictive 0.660, counterfactual 0.320;

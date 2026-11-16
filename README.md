@@ -35,7 +35,7 @@ difference.
   fine-tuning with a bridge loss, and GRPO on chains.
 * Result summaries for every run reported in the paper (`results/`), with the analysis notes written as the
   experiments ran.
-* The manual audit sheets' judgements for the pseudo-labels and for the models' own citations (`results/mixed/`).
+* The manual audit sheets' judgements for the pseudo-labels and for the models' own citations (`results/audits/`).
 
 Not here yet: model weights, per-item outputs and the frame packs. Benchmark videos are not redistributed; the
 scripts below download or rebuild what they need.
@@ -102,7 +102,7 @@ cs-frames --eval-pack --chains data/triplets/clevrer_validation.jsonl --per-type
 EVALPACK=data/frames/evalpack MC=option BATCH=8 bash data/scripts/stage0_baseline.sh <model or adapter dir> 250 <tag> chain 640
 
 # self-citation test on the items of the plain run
-BENCH=clevrer PACK=data/frames/evalpack RESULTS_DIR=results/stage0 bash data/scripts/cite_eval.sh <model> <tag>
+BENCH=clevrer PACK=data/frames/evalpack bash data/scripts/cite_eval.sh <model> <tag>
 ```
 
 Chain models answer one yes/no item per option (`MC=option`, instruction `chain`, 640 new tokens). Models that
@@ -112,26 +112,29 @@ answer with a bare letter use `MC=multi` with instruction `plain` or `none`.
 
 ```bash
 # plain and blind runs on the 999-question validation subset (data/subsets/nextqa_val_ids.json)
-PACK=<nextqa pack> RESULTS_DIR=results/nextqa MC=option bash data/scripts/nextqa_eval.sh <model> <tag> chain 640
+PACK=<nextqa pack> MC=option bash data/scripts/nextqa_eval.sh <model> <tag> chain 640
 
 # self-citation test
-PACK=<nextqa pack> RESULTS_DIR=results/nextqa bash data/scripts/cite_eval.sh <model> <tag>
+PACK=<nextqa pack> bash data/scripts/cite_eval.sh <model> <tag>
 
 # entity-track test: detect the named entities on all 16 frames once, then mask them
-cs-entity-tracks results/nextqa/<tag>_nq_plain.jsonl --pack <nextqa pack> --out results/nextqa/nextqa_entity_tracks.json
-PACK=<nextqa pack> RESULTS_DIR=results/nextqa bash data/scripts/cite_track_eval.sh <model> <tag>
+cs-entity-tracks results/runs/<tag>_nq_plain.jsonl --pack <nextqa pack> --out results/runs/nextqa_entity_tracks.json
+PACK=<nextqa pack> bash data/scripts/cite_track_eval.sh <model> <tag>
 
 # does a cited box land on the entity the step names?
-cs-cite-grounding results/nextqa/<tag>_nq_plain.jsonl --pack <nextqa pack> --out results/nextqa/<tag>_nq_cite_grounding.json
+cs-cite-grounding results/runs/<tag>_nq_plain.jsonl --pack <nextqa pack> --out results/runs/<tag>_nq_cite_grounding.json
 
 # diagnostics from the saved outputs (CPU)
-cs-faithfulness-splits results/nextqa --tag <tag>_nq --tracks results/nextqa/nextqa_entity_tracks.json
+cs-faithfulness-splits results/runs --tag <tag>_nq --tracks results/runs/nextqa_entity_tracks.json
 ```
 
 A pack is a directory of pre-extracted frames (`frames/<video>/fNN.jpg`) built once with `cs-frames`
 (`--eval-pack`, `--nextqa-pack`, `--causalvqa-pack`), so that the GPU machine never decodes video.
 
 The random controls are seeded draws in output order. They are not stored; the analysis replays them exactly.
+
+The scripts write to `results/runs/`, which is gitignored, unless `RESULTS_DIR` is set, so new runs never
+overwrite the paper's summaries in `results/evals/`.
 
 ## Training
 
@@ -151,7 +154,7 @@ tag, and `colab/README.md` is the run sheet that was used.
 ## Results
 
 `results/README.md` indexes the directories and lists the names that changed between the working notes and the
-paper. `results/colab/` has the per-condition summaries and gap tables of
+paper. `results/evals/` has the per-condition summaries and gap tables of
 every run. File tags:
 
 | Tag | Model |

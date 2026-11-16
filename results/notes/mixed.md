@@ -135,7 +135,7 @@ paired 0.430, GRPO balanced 0.515 / 0.350. Blind, per option: base 0.070 / 0.030
 
 ## Splits of the self-citation results (`cs-faithfulness-splits`)
 
-`cs-faithfulness-splits results/colab --tag <tag> [--tracks results/colab/nextqa_entity_tracks.json]` writes
+`cs-faithfulness-splits results/evals --tag <tag> [--tracks results/evals/nextqa_entity_tracks.json]` writes
 `<tag>_splits.json`: every gap separately for correct options (gold "yes") and wrong options (gold "no"), split by
 whether every cited box hits the detector's box for the named entity (IoU >= 0.5), the masked area, and what the
 chain written under the mask cites. Same question-clustered bootstrap as the main report.
@@ -174,7 +174,7 @@ chain GRPO 0.654 / 0.665 / 0.660, CSR 0.668 / 0.666, CSR without necessity 0.637
 
 ## Pooled estimates, bounds and control overlap (added 2026-11-09)
 
-`cs-faithfulness-splits results/colab --pool <tags> --name <name>` pools the items of several models (a question's
+`cs-faithfulness-splits results/evals --pool <tags> --name <name>` pools the items of several models (a question's
 items from every model form one bootstrap cluster) and writes `<name>_pooled.json`. `flip` is the intervention's own
 flip rate with its CI: a gap cannot exceed it under any control. Pools: the five CLEVRER chain models
 (`clevrer_chain`) and the five models trained on NExT-QA chains (`nq_real`).

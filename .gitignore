@@ -29,7 +29,7 @@ dist/
 wandb/
 
 # private notes, plan, and proposal drafts
-notes/
+/notes/
 
 # exported training files (regenerable)
 data/rl/
@@ -45,6 +45,7 @@ paper/
 # causalvqa raw data and packs
 data/raw/causalvqa/
 data/mix/
-results/mixed/pseudolabel_audit.html
-results/mixed/model_citation_audit.html
-results/mixed/model_verdict_audit.html
+results/audits/*.html
+
+# superseded early runs, kept locally only
+results/_superseded/

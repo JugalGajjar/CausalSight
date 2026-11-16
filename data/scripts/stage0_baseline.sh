@@ -22,7 +22,7 @@ else
   EXTRA=()
 fi
 COMMON=(--bench clevrer --split validation --chains "$CHAINS" --per-type "$PER_TYPE" --seed 0 --model "$MODEL" --instr "$INSTR" --max-new-tokens "$MAXTOK" --mc "$MC" --batch-size "$BATCH" "${EXTRA[@]}")
-OUT="${RESULTS_DIR:-results/stage0}"   # on Colab set RESULTS_DIR to a Drive path so results survive disconnects
+OUT="${RESULTS_DIR:-results/runs}"   # on Colab set RESULTS_DIR to a Drive path so results survive disconnects
 mkdir -p "$OUT"
 run() {  # run <condition-name> [extra cs-eval args]: skip conditions that already have a finished summary
   local name="$1"; shift
@@ -35,7 +35,7 @@ run mask_evidence --mask evidence
 run mask_random --mask random
 cs-faithfulness "$OUT" --tag "$TAG"
 
-# Object-track conditions (stronger intervention; see results/stage0/README.md)
+# Object-track conditions (stronger intervention; see results/notes/stage0.md)
 run mask_track --mask track
 run mask_track_random --mask track_random
 cs-faithfulness "$OUT" --tag "$TAG"

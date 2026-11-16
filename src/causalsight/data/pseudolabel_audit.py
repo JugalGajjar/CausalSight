@@ -1,6 +1,6 @@
 """Manual audit sheet for pseudo-labelled NExT-QA chains.
 
-  cs-pseudolabel-audit <real_sft.jsonl> --frames data/frames/nextqa_pack --out results/mixed/pseudolabel_audit.html [--n 100]
+  cs-pseudolabel-audit <real_sft.jsonl> --frames data/frames/nextqa_pack --out results/audits/pseudolabel_audit.html [--n 100]
 
 Samples n chains (one per question, the "yes" item, seed 0) and writes one self-contained HTML page: for every
 step the cited frame (the sampled frame nearest the span's centre, as in the grounding check) with the detector box drawn, the entity the teacher named and its observation, and three
@@ -9,7 +9,7 @@ plus one per chain (the steps together are enough to answer). A button at the to
 (`cs-pseudolabel-audit summarize <csv>` turns it into the numbers for the paper). Images are embedded at 320 px
 wide, so the page is ~5 MB and needs nothing but a browser.
 
-  cs-pseudolabel-audit build-model <tag>_plain.jsonl ... --frames data/frames/nextqa_pack --out results/mixed/model_citation_audit.html
+  cs-pseudolabel-audit build-model <tag>_plain.jsonl ... --frames data/frames/nextqa_pack --out results/audits/model_citation_audit.html
 
 does the same for trained models' own chains on validation items (n-each per file, one per question), with one more
 chain-level judgement (the steps support the answer the model gave); `summarize <csv> --n-each 50 --names a b`

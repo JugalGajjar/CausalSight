@@ -9,8 +9,8 @@ the control blacks out boxes of the same sizes on the same frames at random posi
 
 Step 1 (GPU, once per set of chain models; ~3k detector calls of 16 frames each for 999 NExT-QA questions):
 
-  cs-entity-tracks results/colab/mixsft3b_nq_plain.jsonl results/colab/realrl3b_nq_plain.jsonl \
-      --pack data/frames/nextqa_pack --out results/colab/nextqa_entity_tracks.json
+  cs-entity-tracks results/evals/mixsft3b_nq_plain.jsonl results/evals/realrl3b_nq_plain.jsonl \
+      --pack data/frames/nextqa_pack --out results/evals/nextqa_entity_tracks.json
 
 writes {video: {phrase: {"<frame>": [x0, y0, x1, y1]}}} (top detection per sampled frame, normalised) and a
 summary of how many of the 16 frames each entity is detected on (the redundancy the test is about).

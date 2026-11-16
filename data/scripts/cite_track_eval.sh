@@ -10,7 +10,7 @@
 set -euo pipefail
 MODEL="$1"; TAG="$2"; IDS="${3:-}"
 INSTR="${INSTR:-chain}"; MAXTOK="${MAXTOK:-640}"; MC="${MC:-option}"; BATCH="${BATCH:-8}"
-PACK="${PACK:?set PACK}"; OUT="${RESULTS_DIR:-results/nextqa}"; TRACKS="${TRACKS:-$OUT/nextqa_entity_tracks.json}"
+PACK="${PACK:?set PACK}"; OUT="${RESULTS_DIR:-results/runs}"; TRACKS="${TRACKS:-$OUT/nextqa_entity_tracks.json}"
 CHAINS="$OUT/${TAG}_nq_plain.jsonl"
 [ -f "$CHAINS" ] || { echo "missing $CHAINS"; exit 1; }
 [ -f "$TRACKS" ] || { echo "missing $TRACKS (run cs-entity-tracks first)"; exit 1; }

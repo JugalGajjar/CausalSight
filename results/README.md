@@ -1,7 +1,31 @@
-# Results index (all matched preprocessing; CLEVRER = 1,000 stratified validation questions; CausalVQA = debug split; NExT-QA = 999-question val subset)
+# Results
 
-These directories hold the result summaries of every run and the notes written as the experiments ran, in
-chronological order. The notes record the project as it developed, so early entries use earlier names and a
+All runs use matched preprocessing: 16 uniformly sampled frames and greedy decoding. CLEVRER is 1,000 stratified
+validation questions (2,537 per-option items), NExT-QA a 999-question validation subset (4,995 per-option items),
+and CausalVQA the debug split.
+
+| Folder | Contents |
+|---|---|
+| `evals/` | Per-condition summaries, gap tables and diagnostics of every trained and zero-shot model. The paper's tables are generated from these files. One flat folder, files named `<tag>_<condition>`; the tag key is in the top-level README. |
+| `baselines/` | The released checkpoints (VideoRFT-3B, VideoThinker-R1-3B, Video-R1-7B) on the same CLEVRER items. |
+| `audits/` | Judgements and rates of the three manual audits: the pseudo-labelled chains, the models' own citations, and the models' verdicts. |
+| `notes/` | The notes written as the experiments ran, one file per stage. |
+
+Per-item outputs (`*.jsonl`) and the audit sheets (`*.html`) are not tracked.
+
+## Notes
+
+| File | Covers |
+|---|---|
+| `notes/stage0.md` | zero-shot base and outcome-only GRPO on CLEVRER; how the object-track test was developed |
+| `notes/stage1.md` | CLEVRER chain SFT |
+| `notes/stage2.md` | GRPO on chains, process rewards, step-level credit, seeds |
+| `notes/internvl.md` | the second base, InternVL3-2B |
+| `notes/nextqa.md`, `notes/causalvqa.md` | CLEVRER-trained models on NExT-QA and CausalVQA |
+| `notes/mixed.md` | the mixed-data experiment, the self-citation and entity-track tests, their diagnostics, and the manual audits |
+| `notes/clevrer_format_report.md` | output of `cs-clevrer-check` on the CLEVRER files |
+
+The notes are chronological and record the project as it developed, so early entries use earlier names and a
 framing that later results revised; the paper is the final reading. Names that changed:
 
 | In the notes | In the paper |
@@ -13,33 +37,3 @@ framing that later results revised; the paper is the final reading. Names that c
 | obj_iou | box IoU against the named object |
 | Stage 0 / 1 / 2 | outcome-only GRPO / chain SFT / GRPO on chains |
 | mix, real, plain arms | mixed, NExT-QA chain and plain (chain-free) arms |
-
-* `stage0/` Qwen2.5-VL-3B base and outcome-only GRPO (balanced / natural mix); faithfulness suite.
-* `stage1/`, `stage2/` grounded-chain SFT, chain GRPO (3 seeds), CSR (2 seeds), step-credit variants, no-necessity ablation.
-* `baselines/` VideoRFT-3B, VideoThinker-R1-3B (Wu et al.), Video-R1-7B on our suite.
-* `causalvqa/` real-video transfer (debug split).
-* `nextqa/` real-video transfer on a 999-question NExT-QA val subset; "before" block for the mixed-data experiment.
-* `mixed/` the mixed real/synthetic chain experiment: six arms on CLEVRER, NExT-QA, CausalVQA; per-option baselines;
-  self-cited evidence masking (cite gap) on NExT-QA and CLEVRER, replicated on a second SFT seed and on InternVL;
-  citation grounding of the real-video chains (Grounding DINO re-detection).
-* `colab/` per-condition summaries and faithfulness tables for every run (per-item jsonl not tracked).
-
-## Second base: InternVL3-2B (language model Qwen2.5-1.5B, InternViT-300M), lr 3e-6 for RL (1e-5 diverged)
-
-| model | descr | expl (opt) | pred (opt) | cf (opt) | box IoU | blind gap | track gap |
-|---|---|---|---|---|---|---|---|
-| InternVL base | 0.836 | 0.855 | 0.826 | 0.764 | - | 0.43 | 0.51 |
-| + outcome-only GRPO | 0.856 | 0.927 | 0.896 | 0.770 | - | 0.50 | 0.56 |
-| grounded-chain SFT | 0.824 | 0.694 | 0.794 | 0.773 | 0.750 | 0.28 | 0.55 |
-| + chain GRPO | 0.840 | 0.762 | 0.806 | 0.776 | 0.744 | 0.30 | 0.57 |
-
-CausalVQA (set acc / paired / blind gap): base 0.410 / 0.290 / +0.12; GRPO 0.415 / 0.250 / +0.13;
-SFT 0.000 (per-option 0.324); chain GRPO 0.005 (per-option 0.338).
-
-Reading. The two robust findings replicate on the second base: outcome-only GRPO does not collapse
-(explanatory +7, predictive +7, blind gap grows) and the chain pipeline yields well-grounded, verifiable
-steps (box IoU 0.75, track gap 0.55-0.57, format ~99%). What does not transfer is accuracy parity: on
-InternVL the chain models stay below the base on explanatory (0.76 vs 0.86) and well below outcome-only
-GRPO (0.93); on Qwen they matched it. Real-video transfer of synthetic-only chains fails on both bases.
-The InternVL RL runs at the Qwen learning rate (1e-5) diverged (KL 11-58, reward falling) and are not
-reported; `runs/internvl_stage0`, `runs/internvl_stage2_outcome_only` are kept for the record.

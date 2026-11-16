@@ -1,6 +1,6 @@
 """Finer cuts of the self-citation results, from saved per-item outputs (no model, no detector).
 
-  cs-faithfulness-splits results/colab --tag mixsft3b_nq [--tracks results/colab/nextqa_entity_tracks.json]
+  cs-faithfulness-splits results/evals --tag mixsft3b_nq [--tracks results/evals/nextqa_entity_tracks.json]
 
 writes <tag>_splits.json with
 
@@ -40,7 +40,7 @@ Gaps are flip-rate differences over the items correct under the plain input, wit
 paired bootstrap of the main report; `flip_ci` is the interval of the intervention's flip rate itself, an
 upper bound on any gap the intervention could show.
 
-  cs-faithfulness-splits results/colab --pool mixsft3b_nq mixsft3b_s1_nq ... --name nq_real
+  cs-faithfulness-splits results/evals --pool mixsft3b_nq mixsft3b_s1_nq ... --name nq_real
 
 pools the items of several models (clusters stay questions) and writes <name>_pooled.json.
 """

@@ -1,7 +1,7 @@
 """Citation grounding on real video: does a cited box land on the entity the step names?
 
-  cs-cite-grounding results/colab/mixrl3b_nq_plain.jsonl --pack data/frames/nextqa_pack \
-      --out results/colab/mixrl3b_nq_cite_grounding.json
+  cs-cite-grounding results/evals/mixrl3b_nq_plain.jsonl --pack data/frames/nextqa_pack \
+      --out results/evals/mixrl3b_nq_cite_grounding.json
 
 For every parsed step of every chain in a harness per-item output file: the entity is the step's sub-question
 ("Where is <entity>?"), the frame is the sampled frame nearest the centre of the cited span (chain grid 0-127 onto

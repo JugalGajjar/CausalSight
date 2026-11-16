@@ -39,4 +39,4 @@ format itself is expensive: asked one yes/no question per option, the base model
 selection accuracy and GRPO balanced from 0.750 to 0.522. Both turn conservative ("yes" to 19% and 15% of
 options; 27% and 42% of questions get no "yes" at all), so the chain models' selection accuracy is to be
 compared with these two rows, not with the letters rows. This block is the baseline for the mixed
-real/synthetic arms (`sft_mix_*`, `grpo_mix_*`, `*_real_chains`; see `results/mixed/`).
+real/synthetic arms (`sft_mix_*`, `grpo_mix_*`, `*_real_chains`; see `mixed.md`).

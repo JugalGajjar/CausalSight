@@ -1,6 +1,6 @@
 """Faithfulness summary from the four Stage 0 runs (plain / blind / mask_evidence / mask_random).
 
-  cs-faithfulness results/stage0 --tag qwen3b
+  cs-faithfulness results/evals --tag qwen3b
 
 Blind Gap            = acc(plain) - acc(blind)
 Evidence Sensitivity = flip rate among items correct in plain: masked-evidence vs masked-random;
