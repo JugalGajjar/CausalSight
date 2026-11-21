@@ -199,14 +199,14 @@ NExT-QA for the fixed subsets used here.
 
 ## Citation
 
-The arXiv identifier is to be updated once the preprint is posted.
+Preprint: [arXiv:2611.21940](https://arxiv.org/abs/2611.21940)
 
 ```bibtex
-@misc{gajjar2026doesthemodel,
-  title  = {Does the Model Use What It Cites? Counterfactual Tests of Grounded Reasoning Chains in Small Video-Language Models},
-  author = {Gajjar, Jugal and Subramaniakuppusamy, Kamalasankari},
-  year   = {2026},
-  note   = {arXiv preprint, identifier to be updated}
+@article{gajjar2026does,
+  title={Does the Model Use What It Cites? Counterfactual Tests of Grounded Reasoning Chains in Small Video-Language Models},
+  author={Gajjar, Jugal and Subramaniakuppusamy, Kamalasankari},
+  journal={arXiv preprint arXiv:2611.21940},
+  year={2026}
 }
 ```
 
