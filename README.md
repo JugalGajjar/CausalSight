@@ -85,9 +85,10 @@ that returns the same triplets (`src/causalsight/train/format.py`).
 
 ## Running the suite
 
-A pipeline check without weights or videos:
+A pipeline check without weights or videos; it needs only the CLEVRER question and annotation files:
 
 ```bash
+bash data/scripts/download_clevrer.sh --no-videos
 cs-eval --model dummy --bench clevrer --limit 20
 ```
 
